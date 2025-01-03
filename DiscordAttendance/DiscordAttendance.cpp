@@ -2,6 +2,7 @@
 
 int main()
 {
-	std::cout << "Å×½ºÆ®´Â ¿µ¾î·Î TEST" << std::endl;
-	std::cout << "¸®´ª½º È¯°æ ÇÑ±Û·Î ¼öÁ¤ ¿Ï·á Complete" << std::endl;
+	std::cout << "í…ŒìŠ¤íŠ¸ëŠ” ì˜ì–´ë¡œ TEST" << std::endl;
+	std::cout << "ë¦¬ëˆ…ìŠ¤ í™˜ê²½ í•œê¸€ë¡œ ìˆ˜ì • ì™„ë£Œ Complete" << std::endl;
+	std::cout << "ë¹„ì£¼ì–¼ìŠ¤íŠœë””ì˜¤ ì„¤ì •ê¹Œì§€ Success" << std::endl;
 }
