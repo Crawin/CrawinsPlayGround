@@ -33,3 +33,6 @@
 
 *.key
 *.pub
+*.ip
+
+VisualStudio/
