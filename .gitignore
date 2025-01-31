@@ -35,4 +35,6 @@
 *.pub
 *.ip
 
-VisualStudio/
+VisualStudio/*
+!VisualStudio/Includes/
+Client/
