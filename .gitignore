@@ -36,5 +36,4 @@
 *.ip
 
 VisualStudio/*
-!VisualStudio/Includes/
 Client/
