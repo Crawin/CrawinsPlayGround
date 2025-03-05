@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <mutex>
 #include "Packets.h"
-#include "lua.hpp"
+#include "PlayGroundLua.h"
 
 #pragma comment(lib,"lua54.lib")
 
@@ -67,6 +67,7 @@ class Server {
 private:
 	tcp::acceptor m_acceptor;
 	LoginUsers m_loginUsers;
+	Lua m_lua;
 private:
 	void listen() {
 		m_acceptor.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
@@ -84,5 +85,11 @@ public:
 	Server(boost::asio::io_context& io_context) :
 		m_acceptor(io_context, tcp::endpoint(tcp::v4(), PORT_NUMBER)) {
 		listen();
+	}
+	void reload_lua() {
+		m_lua.reset();
+	}
+	void packet_types_lua() {
+		m_lua.print_packet_types();
 	}
 };

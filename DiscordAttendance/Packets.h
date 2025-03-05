@@ -8,7 +8,8 @@ enum PacketType : unsigned char{
 	HELP,
 	HELLO,
 	BYE,
-	FUNNY
+	FUNNY,
+	LOL
 };
 
 class packet_base {
