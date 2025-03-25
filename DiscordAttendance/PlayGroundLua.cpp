@@ -6,6 +6,7 @@
 Lua::Lua()
 {
 	std::cout << "---------- Loading Lua... ----------\n";
+	m_p_lua = nullptr;
 	reset();
 	std::cout << "-------- Lua Load Complete ---------\n";
 }
