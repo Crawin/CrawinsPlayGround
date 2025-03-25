@@ -1,6 +1,6 @@
 #pragma once
 constexpr unsigned short BUFFER_SIZE = 1024;
-constexpr unsigned short PORT_NUMBER = 2222;
+constexpr unsigned short PORT_NUMBER = 4280;
 #pragma pack(1)
 
 enum PacketType : unsigned char{
