@@ -16,6 +16,13 @@ void server_commands(Server& server, boost::asio::io_context& io_context) {
 			std::cout << c.first << '\n';
 		}
 		};
+	commands["users"] = [&server]() {
+		const std::unordered_map<CLIENT_PORT, Session>& LoginUsers = server.getLoginUsers();
+		int cnt = 1;
+		for (const auto& user : LoginUsers) {
+			std::cout << cnt++ << ". " << user.first << '\n';
+		}
+		};
 	std::cout << "------ Commands Load Complete ------\n";
 
 	std::string command;

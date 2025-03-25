@@ -61,6 +61,7 @@ public:
 		m_um_login_users.erase(num);
 		m_mutex.unlock();
 	}
+	const std::unordered_map<CLIENT_PORT, Session>& GetLoginUsers() { return m_um_login_users; }
 };
 
 class Server {
@@ -91,5 +92,8 @@ public:
 	}
 	void packet_types_lua() {
 		m_lua.print_packet_types();
+	}
+	const std::unordered_map<CLIENT_PORT, Session>& getLoginUsers(){
+		return m_loginUsers.GetLoginUsers();
 	}
 };
