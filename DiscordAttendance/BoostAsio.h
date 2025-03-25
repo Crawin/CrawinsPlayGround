@@ -17,6 +17,7 @@ class LoginUsers;
 class Session {
 private:
 	tcp::socket m_socket;
+	CLIENT_PORT m_port;
 	char m_buffer[BUFFER_SIZE];
 	LoginUsers* m_loginUsers;
 public:

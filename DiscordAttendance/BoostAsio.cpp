@@ -136,6 +136,7 @@
 
 Session::Session(tcp::socket socket, LoginUsers* loginusers) : m_socket(std::move(socket)), m_loginUsers(loginusers)
 { 
+	m_port = m_socket.remote_endpoint().port();
 	memset(m_buffer, 0, BUFFER_SIZE);
 }
 
@@ -155,9 +156,8 @@ void Session::Read()
 			}
 			else {
 				if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset) {
-					CLIENT_PORT port = m_socket.remote_endpoint().port();
-					std::cout << '[' << port << "] " << ec.message() << '\n';
-					m_loginUsers->erase(port);
+					std::cout << '[' << m_port << "] " << ec.message() << '\n';
+					m_loginUsers->erase(m_port);
 				}
 				else {
 					std::cerr << "Error: " << ec.message() << "\n";
