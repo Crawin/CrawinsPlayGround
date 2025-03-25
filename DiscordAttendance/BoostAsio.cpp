@@ -136,12 +136,12 @@
 
 Session::Session(tcp::socket socket, LoginUsers* loginusers) : m_socket(std::move(socket)), m_loginUsers(loginusers)
 { 
-	ZeroMemory(m_buffer, BUFFER_SIZE);
+	memset(m_buffer, 0, BUFFER_SIZE);
 }
 
 Session::Session() : m_socket(NULL), m_loginUsers(nullptr)
 {
-	ZeroMemory(m_buffer, BUFFER_SIZE);
+	memset(m_buffer,0, BUFFER_SIZE);
 	std::cout << "Default Session Error!\n";
 }
 
