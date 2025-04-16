@@ -4,8 +4,7 @@ std::atomic_int complete = 0;
 std::atomic_int fail = 0;
 Bot::Bot()
 {
-
-	test(2);
+	//test(5);
 	m_pCluster = new dpp::cluster(m_strBottoken);
 }
 
@@ -437,15 +436,16 @@ void Bot::test(int n)
 			t.join();
 		}
 		vt.clear();
-		//m_lfhsl.Print();
+		m_lfhsl.Clear();
 		//std::cout << "finish\n";
-		std::cout << (std::chrono::high_resolution_clock::now() - start).count() << std::endl;
+		std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() <<"ms" << std::endl;
+		m_lfhsl.Print();
 	}
 }
 
 void Bot::test_func(const int& start)
 {
-	int r,key;
+	int r, key;
 	for (volatile int i = 0; i < 10000000; ++i) {
 		//printf("Threadid: %d [%d]\n", m_lfmsl.m_thread_id, i);
 		//std::cout << m_lfmsl.m_thread_id << std::endl;
@@ -459,14 +459,13 @@ void Bot::test_func(const int& start)
 		//	std::cout << i + start << "삭제 실패\n";
 		//}
 		r = rand() % 3;
-		key = rand()%1000;
+		key = rand() % 1000;
 		switch (r) {
 		case 0:
 			m_lfhsl.Insert(key, Whitelist(key, key, key));
 			break;
 		case 1:
 			m_lfhsl.Find(key);
-
 			break;
 		case 2:
 			m_lfhsl.Remove(key);

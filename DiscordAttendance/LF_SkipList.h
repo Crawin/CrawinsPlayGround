@@ -385,6 +385,7 @@ namespace crawin {
 			int level;
 			Stamped_Node next[max_level + 1];
 			unsigned long long ebr_number;
+			std::chrono::steady_clock::time_point removed_time;
 			Node() {}
 			Node(const Key& key, const Value& value, const int& top) :k(key), v(value), level(top), ebr_number(0) {
 				for (int i = 0; i <= max_level; ++i) {
@@ -425,7 +426,19 @@ namespace crawin {
 
 				if(m_free_queue.node_queue.empty())
 					return new Node(key, value, lv);
+
 				Node* n = m_free_queue.node_queue.front();
+				auto now = std::chrono::steady_clock::now();
+				while (now - n->removed_time > std::chrono::seconds(1)) {
+					std::cout << "1초 경과로 인한 노드 삭제!\n";
+					m_free_queue.node_queue.pop();
+					delete n;
+					if (m_free_queue.node_queue.empty()) {
+						return new Node(key, value, lv);
+					}
+					n = m_free_queue.node_queue.front();
+				}
+
 				for (int i = 0; i < max_threads; ++i) {
 					if ((epoch_array[i * 16] != 0) && (epoch_array[i * 16] < n->ebr_number)) {
 						return new Node(key, value, lv);
@@ -438,20 +451,26 @@ namespace crawin {
 					n->next[i].set_ptr(nullptr);
 				}
 				n->level = lv;
+				n->removed_time = std::chrono::steady_clock::time_point{};
 				//std::cout << key << "재사용\n";
 				return n;
 			}
 			void reuse(Node* node) {
 				node->ebr_number = epoch_counter;
+				node->removed_time = std::chrono::steady_clock::now();
 				m_free_queue.node_queue.emplace(node);
+			}
+			void reset() {
+				epoch_counter = 1;
 			}
 		};
 
 		class Free_queue {
 		public:
 			std::queue<Node*> node_queue;
+			std::queue<int> test_queue;
 			Free_queue() {
-				//std::cout << "생성자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << '\n';
+				std::cout << "생성자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << '\n';
 			}
 			~Free_queue() {
 				std::cout << "소멸자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << " size: "<< node_queue.size() << '\n';
@@ -527,6 +546,7 @@ namespace crawin {
 				while (true) {
 					bool found = find(key, prevs, currs);
 					if (found) {
+						bool f = false;
 						ebr.reuse(n);
 						ebr.end_epoch();
 						//delete n;
@@ -607,6 +627,24 @@ namespace crawin {
 				return (result == key);
 			}
 
+			void clear() {
+				bool removed = false;
+				Node* curr = head.next[0].get_ptr(removed);
+				Node* temp;
+				//int num = 0;
+				while (curr != &tail) {
+					temp = curr;
+					curr = curr->next[0].get_ptr(removed);
+					if (removed)++num;
+					delete temp;
+				}
+				//std::cout << num << "개 발견\n";
+				for (int i = 0; i <= max_level; ++i) {
+					head.next[i].set_ptr(&tail);
+				}
+				this->ebr.reset();
+			}
+
 			void print() {
 				Node* c = &head;
 				bool removed = false;
@@ -669,49 +707,11 @@ namespace crawin {
 			}
 		}
 
-		/*bool find(const Key& key, Node* preds[], Node* currs[]) {
-			Node* prev = &head;
-			Node* next = nullptr;
-			for (int level = max_level; level >= 0; --level) {
-				next = prev->next[level];
-
-				if (next->key < key) {
-					prev = next;
-					++level;
-					continue;
-				}
-				preds[level] = prev;
-				currs[level] = next;
+		void Clear() {
+			for (int i = 0; i < bucket_size; ++i) {
+				buckets[i].clear();
 			}
-			return next->key == key;
 		}
-
-		bool insert(const Key& key, const Value& value) {
-			Node* n = new Node(key, value, rand() % (max_level + 1));
-			Node* pred[max_level + 1]{ nullptr, };
-			Node* curr[max_level + 1]{ nullptr, };
-			while (true) {
-				bool found = find(key, pred, curr);
-				if (found) {
-					delete n;
-					return false;
-				}
-				for (int level = 0; level <= n->level; ++level) {
-					n->next[level] = curr[level];
-				}
-				if (std::atomic_compare_exchange_strong(reinterpret_cast<volatile std::atomic_llong*>(&(pred[0]->next[0])), reinterpret_cast<long long*>(&curr[0]), reinterpret_cast<long long>(n)) == false) {
-					continue;
-				}
-				for (int level = 1; level <= n->level; ++level) {
-					while (true) {
-						if (std::atomic_compare_exchange_strong(reinterpret_cast<volatile std::atomic_llong*>(&(pred[level]->next[level])), reinterpret_cast<long long*>(&curr[level]), reinterpret_cast<long long>(n))) {
-							break;
-						}
-						find(key, pred, curr);
-					}
-				}
-				return true;
-			}*/
 
 		static thread_local Free_queue m_free_queue;
 		static thread_local int m_thread_id;
