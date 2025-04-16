@@ -1,7 +1,5 @@
-#include "lua.hpp"
+#include "stdafx.h"
 #include "PlayGroundLua.h"
-#include <iostream>
-#pragma comment(lib,"lua54.lib")
 
 Lua::Lua()
 {

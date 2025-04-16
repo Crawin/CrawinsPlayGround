@@ -1,0 +1,40 @@
+<[server_ID]>
+	<CURRENT>
+	{
+	ID: ,
+	START: ,
+	}
+	</CURRENT>
+{
+ID: ,
+NAME: ,
+WORKINGTIME: {
+		2025: {
+			1: {
+				1: {
+					total: null,
+					log: {
+						start: end,
+						start: end
+					}
+				2: null,
+				3: null,
+				...
+				30: null,
+				31: null
+			    }
+			2: null,
+			3: ,
+			4:,
+			5:,
+			6:,
+			7:,
+			8:,
+			9:,
+			10:,
+			11:,
+			12:
+		},
+	},
+}
+</[server_ID]>

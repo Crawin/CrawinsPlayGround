@@ -131,8 +131,10 @@
 //
 //    return 0;
 //}
-
+#include "stdafx.h"
 #include "BoostAsio.h"
+
+boost::asio::io_context dummy_io_context;
 
 Session::Session(tcp::socket socket, LoginUsers* loginusers) : m_socket(std::move(socket)), m_loginUsers(loginusers)
 { 
@@ -140,10 +142,10 @@ Session::Session(tcp::socket socket, LoginUsers* loginusers) : m_socket(std::mov
 	memset(m_buffer, 0, BUFFER_SIZE);
 }
 
-Session::Session() : m_socket(NULL), m_loginUsers(nullptr)
+Session::Session() : m_loginUsers(nullptr), m_port(0), m_socket(dummy_io_context)
 {
 	memset(m_buffer,0, BUFFER_SIZE);
-	std::cout << "Default Session Error!\n";
+	//std::cout << "Default Session Error!\n";
 }
 
 void Session::Read()

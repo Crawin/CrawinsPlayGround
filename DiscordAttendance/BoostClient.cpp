@@ -56,9 +56,9 @@ void run_client(const std::string& server_ip, unsigned short server_port) {
     }
 }
 
-int main() {
-    const std::string server_ip = "127.0.0.1"; // Change to the server IP address if needed
-    const unsigned short server_port = 12345;  // Change to match your server's port
+int start() {
+    const std::string server_ip = /*"152.67.205.188";*/ "127.0.0.1"; // Change to the server IP address if needed
+    const unsigned short server_port = 4280;  // Change to match your server's port
 
     std::cout << "Starting client..." << std::endl;
     run_client(server_ip, PORT_NUMBER);
