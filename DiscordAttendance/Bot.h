@@ -71,7 +71,7 @@ public:
 	void save_whitelist();
 	bool find_whitelist_in_DB(const unsigned long long& guild_id);
 	void cleanup_Memory();
-	void test();
+	void test(int n);
 	void test_func(const int& start);
 };
 

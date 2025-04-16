@@ -527,8 +527,9 @@ namespace crawin {
 				while (true) {
 					bool found = find(key, prevs, currs);
 					if (found) {
+						ebr.reuse(n);
 						ebr.end_epoch();
-						delete n;
+						//delete n;
 						return false;
 					}
 					for (int level = 0; level <= n->level; ++level) {

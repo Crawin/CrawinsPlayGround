@@ -4,8 +4,8 @@ std::atomic_int complete = 0;
 std::atomic_int fail = 0;
 Bot::Bot()
 {
-	//m_lfum.test();
-	//test();
+
+	test(2);
 	m_pCluster = new dpp::cluster(m_strBottoken);
 }
 
@@ -424,34 +424,53 @@ void Bot::cleanup_Memory()
 {
 }
 
-void Bot::test()
+void Bot::test(int n)
 {
 	std::vector<std::thread> vt;
+	while (n--) {
+		auto start = std::chrono::high_resolution_clock::now();
 
-	for (int i = 0; i < 5; ++i) {
-		vt.emplace_back(&Bot::test_func, this, i * 100000 + 1);
+		for (int i = 0; i < 5; ++i) {
+			vt.emplace_back(&Bot::test_func, this, i * 10000000 + 1);
+		}
+		for (auto& t : vt) {
+			t.join();
+		}
+		vt.clear();
+		//m_lfhsl.Print();
+		//std::cout << "finish\n";
+		std::cout << (std::chrono::high_resolution_clock::now() - start).count() << std::endl;
 	}
-
-	for (auto& t : vt) {
-		t.join();
-	}
-	m_lfhsl.Print();
-	std::cout << "finish";
 }
 
 void Bot::test_func(const int& start)
 {
-	for (volatile int i = 0; i < 100000; ++i) {
+	int r,key;
+	for (volatile int i = 0; i < 10000000; ++i) {
 		//printf("Threadid: %d [%d]\n", m_lfmsl.m_thread_id, i);
 		//std::cout << m_lfmsl.m_thread_id << std::endl;
-		if (m_lfhsl.Insert(i + start, Whitelist(i + start, i + start, i + start)) == false) {
-			std::cout << i + start << "삽입 실패\n";
-		}
-		if (m_lfhsl.Find(i + start) == false) {
-			std::cout << i + start << "검색 실패\n";
-		}
-		if (m_lfhsl.Remove(i + start) == false) {
-			std::cout << i + start << "삭제 실패\n";
+		//if (m_lfhsl.Insert(i + start, Whitelist(i + start, i + start, i + start)) == false) {
+		//	std::cout << i + start << "삽입 실패\n";
+		//}
+		//if (m_lfhsl.Find(i + start) == false) {
+		//	std::cout << i + start << "검색 실패\n";
+		//}
+		//if (m_lfhsl.Remove(i + start) == false) {
+		//	std::cout << i + start << "삭제 실패\n";
+		//}
+		r = rand() % 3;
+		key = rand()%1000;
+		switch (r) {
+		case 0:
+			m_lfhsl.Insert(key, Whitelist(key, key, key));
+			break;
+		case 1:
+			m_lfhsl.Find(key);
+
+			break;
+		case 2:
+			m_lfhsl.Remove(key);
+			break;
 		}
 	}
 	//m_lfhsl.m_free_queue
