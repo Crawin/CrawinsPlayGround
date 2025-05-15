@@ -19,14 +19,14 @@ Bot::~Bot()
 
 void Bot::declare_commands()
 {
-	dpp::slashcommand pingcommand("ping", u8"¼­¹ö ÀÀ´ä¼Óµµ È®ÀÎ", m_pCluster->me.id);
-	dpp::slashcommand setchannelcommand("set-channel", u8"À½¼º Ã¤³Î ÇÒ´ç", m_pCluster->me.id);
+	dpp::slashcommand pingcommand("ping", u8"ì„œë²„ ì‘ë‹µì†ë„ í™•ì¸", m_pCluster->me.id);
+	dpp::slashcommand setchannelcommand("set-channel", u8"ìŒì„± ì±„ë„ í• ë‹¹", m_pCluster->me.id);
 	setchannelcommand.add_option(
-		dpp::command_option(dpp::co_channel, "channelid", u8"±â·ÏÇÒ À½¼º Ã¤³ÎÀ» ¼±ÅÃ", true)
+		dpp::command_option(dpp::co_channel, "channelid", u8"ê¸°ë¡í•  ìŒì„± ì±„ë„ì„ ì„ íƒ", true)
 	);
-	dpp::slashcommand setIDcommand("set-user", u8"À¯Àú ID ±â·Ï", m_pCluster->me.id);
+	dpp::slashcommand setIDcommand("set-user", u8"ìœ ì € ID ê¸°ë¡", m_pCluster->me.id);
 	setIDcommand.add_option(
-		dpp::command_option(dpp::co_user, "userid", u8"±â·ÏÇÒ À¯Àú¸¦ ¼±ÅÃ", true)
+		dpp::command_option(dpp::co_user, "userid", u8"ê¸°ë¡í•  ìœ ì €ë¥¼ ì„ íƒ", true)
 	);
 	m_pCluster->global_bulk_command_create({ pingcommand,setchannelcommand,setIDcommand });
 }
@@ -42,7 +42,7 @@ void Bot::define_commands()
 		}
 		if (command == "set-channel") {
 			dpp::snowflake channelid = std::get<dpp::snowflake>(event.get_parameter("channelid"));
-			Whitelist wl{ dpp::utility::time_f(), channelid, NULL };
+			Whitelist wl{ dpp::utility::time_f(), channelid, 0 };
 			auto it = m_whitelist.Insert(event.command.guild_id, wl);
 			if (it.second == false) {
 				it.first->v.lastTime = dpp::utility::time_f();
@@ -54,7 +54,7 @@ void Bot::define_commands()
 		}
 		if (command == "set-user") {
 			dpp::snowflake userid = std::get<dpp::snowflake>(event.get_parameter("userid"));
-			Whitelist wl{ dpp::utility::time_f(), NULL, userid };
+			Whitelist wl{ dpp::utility::time_f(), 0, userid };
 			auto it = m_whitelist.Insert(event.command.guild_id, wl);
 			if (it.second == false) {
 				it.first->v.lastTime = dpp::utility::time_f();
@@ -78,107 +78,107 @@ void Bot::Run()
 			declare_commands();
 
 			m_pCluster->start_timer([this](const dpp::timer& timer_handle) {
-				//std::cout << "Å¸ÀÌ¸Ó ÇÔ¼ö ½ÇÇà" << std::endl;
+				//std::cout << "íƒ€ì´ë¨¸ í•¨ìˆ˜ ì‹¤í–‰" << std::endl;
 				save_whitelist();
 				save_db();
 
-				// ¸Ş¸ğ¸® Á¤¸®
+				// ë©”ëª¨ë¦¬ ì •ë¦¬
 
-				//std::cout << "Å¸ÀÌ¸Ó ÇÔ¼ö Á¾·á" << std::endl;
-				}, 60); // 1ºĞ¸¶´Ù ½ÇÇà
+				//std::cout << "íƒ€ì´ë¨¸ í•¨ìˆ˜ ì¢…ë£Œ" << std::endl;
+				}, 60); // 1ë¶„ë§ˆë‹¤ ì‹¤í–‰
 
 			m_pCluster->on_voice_state_update([this](const dpp::voice_state_update_t& event) {
 				//m_m_wl.lock();
 				auto guild = m_whitelist.Find(event.state.guild_id);
-				if (guild.second) {										// ±â·ÏÁßÀÎ ±æµåÀÌ¸é
-					if (event.state.channel_id) {						// ÅëÈ­¹æ¿¡¼­ ³ª°£°É Á¦¿ÜÇÏ°í ¹º°¥ Çß´Ù¸é
+				if (guild.second) {										// ê¸°ë¡ì¤‘ì¸ ê¸¸ë“œì´ë©´
+					if (event.state.channel_id) {						// í†µí™”ë°©ì—ì„œ ë‚˜ê°„ê±¸ ì œì™¸í•˜ê³  ë­”ê°ˆ í–ˆë‹¤ë©´
 						guild.first->v.channelID.l.lock();
 						auto channel = guild.first->v.channelID.s.find(event.state.channel_id);
-						if (channel != guild.first->v.channelID.s.end()) {							// ±â·ÏÁßÀÎ Ã¤³ÎÀÌ¸é
+						if (channel != guild.first->v.channelID.s.end()) {							// ê¸°ë¡ì¤‘ì¸ ì±„ë„ì´ë©´
 							guild.first->v.userID.l.lock();
 							auto user = guild.first->v.userID.s.find(event.state.user_id);
-							if (user != guild.first->v.userID.s.end()) {							// ±â·ÏÁßÀÎ À¯Àú¸é
+							if (user != guild.first->v.userID.s.end()) {							// ê¸°ë¡ì¤‘ì¸ ìœ ì €ë©´
 								auto tracking_result = m_tracking.Insert(event.state.user_id, DB_DATA(event.state.user_id, event.state.guild_id, dpp::utility::time_f()));
 								if (tracking_result.second == true) {
-									//std::cout << event.state.user_id << "ÀÔÀå\n";
+									//std::cout << event.state.user_id << "ì…ì¥\n";
 								}
 								else {
-									//std::cout << "¹¹ º°ÀÏ ¾Æ´Ñµí\n";
+									//std::cout << "ë­ ë³„ì¼ ì•„ë‹Œë“¯\n";
 								}
 							}
 							else {
-								//std::cout << "ÅëÈ­¹æ±îÁø ÃßÀûÇÏ°í ÀÖÁö¸¸, À¯Àú¸¦ ÃßÀûÇÏÁö ¾ÊÀ½\n";
+								//std::cout << "í†µí™”ë°©ê¹Œì§„ ì¶”ì í•˜ê³  ìˆì§€ë§Œ, ìœ ì €ë¥¼ ì¶”ì í•˜ì§€ ì•ŠìŒ\n";
 
 							}
 							guild.first->v.userID.l.unlock();
 						}
 						else {
-							//std::cout << "±æµå´Â °°Áö¸¸ ÃßÀû¾ÈÇÏ´Â ÅëÈ­¹æÀÓ\n";
+							//std::cout << "ê¸¸ë“œëŠ” ê°™ì§€ë§Œ ì¶”ì ì•ˆí•˜ëŠ” í†µí™”ë°©ì„\n";
 						}
 						guild.first->v.channelID.l.unlock();
 					}
-					else {													// ÅëÈ­¹æ¿¡¼­ ³ª°¬´Ù¸é
+					else {													// í†µí™”ë°©ì—ì„œ ë‚˜ê°”ë‹¤ë©´
 						auto user = m_tracking.Find(event.state.user_id);
-						if (user.second) {									// ÃßÀûÁßÀÎ À¯Àú¶ó¸é
+						if (user.second) {									// ì¶”ì ì¤‘ì¸ ìœ ì €ë¼ë©´
 							user.first->v.END_TIME = dpp::utility::time_f();
 							m_DB.Multiple_Insert(user.first->v.userID, user.first->v);
 							m_tracking.Remove(event.state.user_id);
 							//std::cout << user.first->v.deltaTime() << '\n';
-							//std::cout << event.state.user_id << "ÅğÀå\n";
+							//std::cout << event.state.user_id << "í‡´ì¥\n";
 							save_db();
 						}
 						else {
-							//std::cout << "ÃßÀû ¾ÈÇÏ´Â ¾ÖÀÓ\n";
+							//std::cout << "ì¶”ì  ì•ˆí•˜ëŠ” ì• ì„\n";
 						}
 					}
 				}
-				else {														// È­¸®¿¡ ¿Ã¶ó¿Í ÀÖÁö ¾Ê±â¿¡ È­¸®dbÆÄÀÏ¿¡¼­ È®ÀÎ
+				else {														// í™”ë¦¬ì— ì˜¬ë¼ì™€ ìˆì§€ ì•Šê¸°ì— í™”ë¦¬dbíŒŒì¼ì—ì„œ í™•ì¸
 					if (find_whitelist_in_DB(event.state.guild_id)) {
-						//std::cout << "È­¸®¿¡¼­ ±æµå ¹ß°ß\n";
+						//std::cout << "í™”ë¦¬ì—ì„œ ê¸¸ë“œ ë°œê²¬\n";
 						guild = m_whitelist.Find(event.state.guild_id);
-						if (event.state.channel_id) {						// ÅëÈ­¹æ¿¡¼­ ³ª°£°É Á¦¿ÜÇÏ°í ¹º°¥ Çß´Ù¸é
+						if (event.state.channel_id) {						// í†µí™”ë°©ì—ì„œ ë‚˜ê°„ê±¸ ì œì™¸í•˜ê³  ë­”ê°ˆ í–ˆë‹¤ë©´
 							guild.first->v.channelID.l.lock();
 							auto channel = guild.first->v.channelID.s.find(event.state.channel_id);
-							if (channel != guild.first->v.channelID.s.end()) {							// ±â·ÏÁßÀÎ Ã¤³ÎÀÌ¸é
+							if (channel != guild.first->v.channelID.s.end()) {							// ê¸°ë¡ì¤‘ì¸ ì±„ë„ì´ë©´
 
 								guild.first->v.userID.l.lock();
 								auto user = guild.first->v.userID.s.find(event.state.user_id);
-								if (user != guild.first->v.userID.s.end()) {							// ±â·ÏÁßÀÎ À¯Àú¸é
+								if (user != guild.first->v.userID.s.end()) {							// ê¸°ë¡ì¤‘ì¸ ìœ ì €ë©´
 									auto tracking_result = m_tracking.Insert(event.state.user_id, DB_DATA(event.state.user_id, event.state.guild_id, dpp::utility::time_f()));
 									if (tracking_result.second == true) {
-										//std::cout << event.state.user_id << "ÀÔÀå\n";
+										//std::cout << event.state.user_id << "ì…ì¥\n";
 									}
 									else {
-										//std::cout << "¹¹ º°ÀÏ ¾Æ´Ñµí\n";
+										//std::cout << "ë­ ë³„ì¼ ì•„ë‹Œë“¯\n";
 									}
 								}
 								else {
-									//std::cout << "ÅëÈ­¹æ±îÁø ÃßÀûÇÏ°í ÀÖÁö¸¸, À¯Àú¸¦ ÃßÀûÇÏÁö ¾ÊÀ½\n";
+									//std::cout << "í†µí™”ë°©ê¹Œì§„ ì¶”ì í•˜ê³  ìˆì§€ë§Œ, ìœ ì €ë¥¼ ì¶”ì í•˜ì§€ ì•ŠìŒ\n";
 								}
 								guild.first->v.userID.l.unlock();
 							}
 							else {
-								//std::cout << "±æµå´Â °°Áö¸¸ ÃßÀû¾ÈÇÏ´Â ÅëÈ­¹æÀÓ\n";
+								//std::cout << "ê¸¸ë“œëŠ” ê°™ì§€ë§Œ ì¶”ì ì•ˆí•˜ëŠ” í†µí™”ë°©ì„\n";
 							}
 							guild.first->v.channelID.l.unlock();
 						}
-						else {													// ÅëÈ­¹æ¿¡¼­ ³ª°¬´Ù¸é
+						else {													// í†µí™”ë°©ì—ì„œ ë‚˜ê°”ë‹¤ë©´
 							auto user = m_tracking.Find(event.state.user_id);
-							if (user.second) {									// ÃßÀûÁßÀÎ À¯Àú¶ó¸é
+							if (user.second) {									// ì¶”ì ì¤‘ì¸ ìœ ì €ë¼ë©´
 								user.first->v.END_TIME = dpp::utility::time_f();
 								m_DB.Multiple_Insert(user.first->v.userID, user.first->v);
 								//std::cout << user.first->v.deltaTime() << '\n';
 								m_tracking.Remove(event.state.user_id);
-								//std::cout << event.state.user_id << "ÅğÀå\n";
+								//std::cout << event.state.user_id << "í‡´ì¥\n";
 								save_db();
 							}
 							else {
-								//std::cout << "ÃßÀû ¾ÈÇÏ´Â ¾ÖÀÓ\n";
+								//std::cout << "ì¶”ì  ì•ˆí•˜ëŠ” ì• ì„\n";
 							}
 						}
 					}
 					else {
-						//std::cout << "È­¸®¿¡µµ ¾øÀ½\n";
+						//std::cout << "í™”ë¦¬ì—ë„ ì—†ìŒ\n";
 					}
 				}
 				});
@@ -223,7 +223,7 @@ void Bot::save_whitelist()
 				unsigned long long serverID = std::stoull(server["SERVERID"].get<std::string>());
 				auto result = m_whitelist.Find(serverID);
 				if (result.second == false) {
-					auto inserted = wlDB.Insert(serverID, Whitelist(dpp::utility::time_f(), NULL, NULL));
+					auto inserted = wlDB.Insert(serverID, Whitelist(dpp::utility::time_f(), 0, 0));
 					if (server.contains("CHANNELS")) {
 						for (const auto& ch : server["CHANNELS"]) {
 							unsigned long long channelID = std::stoull(ch.get<std::string>());
@@ -241,7 +241,7 @@ void Bot::save_whitelist()
 				}
 			}
 		}
-		//std::cout << "¹ÌÃßÀûÁßÀÎ È­¸® ¾÷·Îµå" << "/ " << std::this_thread::get_id() << '\n';
+		//std::cout << "ë¯¸ì¶”ì ì¤‘ì¸ í™”ë¦¬ ì—…ë¡œë“œ" << "/ " << std::this_thread::get_id() << '\n';
 		inputFile.close();
 	}
 
@@ -253,7 +253,7 @@ void Bot::save_whitelist()
 		outputFile << j.dump(4);
 		outputFile.close();
 	}
-	//std::cout << "ÀÛ¼º¿Ï·á\n";
+	//std::cout << "ì‘ì„±ì™„ë£Œ\n";
 	m_sm_wldb.unlock();
 }
 
@@ -268,7 +268,7 @@ bool Bot::find_whitelist_in_DB(const unsigned long long& guild_id)
 		for (const auto& server : j["SERVERS"]) {
 			unsigned long long serverID = std::stoull(server["SERVERID"].get<std::string>());
 			if (serverID == guild_id) {
-				auto inserted = m_whitelist.Insert(serverID, Whitelist(dpp::utility::time_f(), NULL, NULL));
+				auto inserted = m_whitelist.Insert(serverID, Whitelist(dpp::utility::time_f(), 0, 0));
 				if (inserted.second) {
 					if (server.contains("CHANNELS")) {
 						for (const auto& ch : server["CHANNELS"]) {
