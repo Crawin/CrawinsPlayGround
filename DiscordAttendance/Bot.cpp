@@ -4,7 +4,9 @@ std::atomic_int complete = 0;
 std::atomic_int fail = 0;
 Bot::Bot()
 {
-	//test(5);
+	//test(1);
+	//save_whitelist();
+	//test(1);
 	m_pCluster = new dpp::cluster(m_strBottoken);
 }
 
@@ -40,21 +42,25 @@ void Bot::define_commands()
 		}
 		if (command == "set-channel") {
 			dpp::snowflake channelid = std::get<dpp::snowflake>(event.get_parameter("channelid"));
-			auto it = m_umWhitelist.try_emplace(event.command.guild_id, dpp::utility::time_f(), channelid, NULL);
+			Whitelist wl{ dpp::utility::time_f(), channelid, NULL };
+			auto it = m_whitelist.Insert(event.command.guild_id, wl);
 			if (it.second == false) {
-				it.first->second.lastTime = dpp::utility::time_f();
-				it.first->second.channelID.emplace(channelid);
+				it.first->v.lastTime = dpp::utility::time_f();
+				it.first->v.channelID.emplace(channelid);
 			}
+			save_whitelist();
 			event.reply(dpp::message("CHANNEL: " + channelid.str()).set_flags(dpp::m_ephemeral));
 			return;
 		}
 		if (command == "set-user") {
 			dpp::snowflake userid = std::get<dpp::snowflake>(event.get_parameter("userid"));
-			auto it = m_umWhitelist.try_emplace(event.command.guild_id, dpp::utility::time_f(), NULL, userid);
+			Whitelist wl{ dpp::utility::time_f(), NULL, userid };
+			auto it = m_whitelist.Insert(event.command.guild_id, wl);
 			if (it.second == false) {
-				it.first->second.lastTime = dpp::utility::time_f();
-				it.first->second.userID.emplace(userid);
+				it.first->v.lastTime = dpp::utility::time_f();
+				it.first->v.userID.emplace(userid);
 			}
+			save_whitelist();
 			event.reply(dpp::message("ID: " + userid.str()).set_flags(dpp::m_ephemeral));
 			return;
 		}
@@ -77,65 +83,103 @@ void Bot::Run()
 				save_db();
 
 				// 메모리 정리
-				
+
 				//std::cout << "타이머 함수 종료" << std::endl;
 				}, 60); // 1분마다 실행
 
 			m_pCluster->on_voice_state_update([this](const dpp::voice_state_update_t& event) {
 				//m_m_wl.lock();
-				auto guild = m_umWhitelist.find(event.state.guild_id);
-				if (guild != m_umWhitelist.end()) {		// 기록중인 길드이면
-					if (event.state.channel_id) {		// 통화방에서 나간걸 제외하고 뭔갈 했다면
-						auto channel = guild->second.channelID.find(event.state.channel_id);
-						if (channel != guild->second.channelID.end()) {	// 기록중인 채널이면
-							auto user = guild->second.userID.find(event.state.user_id);
-							if (user != guild->second.userID.end()) {	// 기록중인 유저면
-								m_umTracking.try_emplace(event.state.user_id, dpp::utility::time_f());	// 추적 시작
-								//std::cout << event.state.user_id << "입장\n";
+				auto guild = m_whitelist.Find(event.state.guild_id);
+				if (guild.second) {										// 기록중인 길드이면
+					if (event.state.channel_id) {						// 통화방에서 나간걸 제외하고 뭔갈 했다면
+						guild.first->v.channelID.l.lock();
+						auto channel = guild.first->v.channelID.s.find(event.state.channel_id);
+						if (channel != guild.first->v.channelID.s.end()) {							// 기록중인 채널이면
+							guild.first->v.userID.l.lock();
+							auto user = guild.first->v.userID.s.find(event.state.user_id);
+							if (user != guild.first->v.userID.s.end()) {							// 기록중인 유저면
+								auto tracking_result = m_tracking.Insert(event.state.user_id, DB_DATA(event.state.user_id, event.state.guild_id, dpp::utility::time_f()));
+								if (tracking_result.second == true) {
+									//std::cout << event.state.user_id << "입장\n";
+								}
+								else {
+									//std::cout << "뭐 별일 아닌듯\n";
+								}
 							}
+							else {
+								//std::cout << "통화방까진 추적하고 있지만, 유저를 추적하지 않음\n";
+
+							}
+							guild.first->v.userID.l.unlock();
 						}
+						else {
+							//std::cout << "길드는 같지만 추적안하는 통화방임\n";
+						}
+						guild.first->v.channelID.l.unlock();
 					}
-					else {								// 통화방에서 나갔다면
-						auto user = m_umTracking.find(event.state.user_id);
-						if (user != m_umTracking.end()) {	// 추적하던 유저라면
-							user->second.END_TIME = dpp::utility::time_f();
-							//std::cout << user->second.END_TIME - user->second.START_TIME << "s" << std::endl;
-							m_qDBdata.emplace(user);
-							m_umTracking.erase(event.state.user_id);
+					else {													// 통화방에서 나갔다면
+						auto user = m_tracking.Find(event.state.user_id);
+						if (user.second) {									// 추적중인 유저라면
+							user.first->v.END_TIME = dpp::utility::time_f();
+							m_DB.Multiple_Insert(user.first->v.userID, user.first->v);
+							m_tracking.Remove(event.state.user_id);
+							//std::cout << user.first->v.deltaTime() << '\n';
 							//std::cout << event.state.user_id << "퇴장\n";
+							save_db();
+						}
+						else {
+							//std::cout << "추적 안하는 애임\n";
 						}
 					}
 				}
-				else {			// 화리에 올라와 있지 않기에 화리db파일에서 확인
-					//m_m_wl.unlock();
+				else {														// 화리에 올라와 있지 않기에 화리db파일에서 확인
 					if (find_whitelist_in_DB(event.state.guild_id)) {
-						//std::cout << "화리에서 발견\n";
-						guild = m_umWhitelist.find(event.state.guild_id);
-						if (event.state.channel_id) {		// 통화방에서 나간걸 제외하고 뭔갈 했다면
-							auto channel = guild->second.channelID.find(event.state.channel_id);
-							if (channel != guild->second.channelID.end()) {	// 기록중인 채널이면
-								auto user = guild->second.userID.find(event.state.user_id);
-								if (user != guild->second.userID.end()) {	// 기록중인 유저면
-									m_umTracking.try_emplace(event.state.user_id, dpp::utility::time_f());	// 추적 시작
-									std::cout << event.state.user_id << "입장\n";
+						//std::cout << "화리에서 길드 발견\n";
+						guild = m_whitelist.Find(event.state.guild_id);
+						if (event.state.channel_id) {						// 통화방에서 나간걸 제외하고 뭔갈 했다면
+							guild.first->v.channelID.l.lock();
+							auto channel = guild.first->v.channelID.s.find(event.state.channel_id);
+							if (channel != guild.first->v.channelID.s.end()) {							// 기록중인 채널이면
+
+								guild.first->v.userID.l.lock();
+								auto user = guild.first->v.userID.s.find(event.state.user_id);
+								if (user != guild.first->v.userID.s.end()) {							// 기록중인 유저면
+									auto tracking_result = m_tracking.Insert(event.state.user_id, DB_DATA(event.state.user_id, event.state.guild_id, dpp::utility::time_f()));
+									if (tracking_result.second == true) {
+										//std::cout << event.state.user_id << "입장\n";
+									}
+									else {
+										//std::cout << "뭐 별일 아닌듯\n";
+									}
 								}
+								else {
+									//std::cout << "통화방까진 추적하고 있지만, 유저를 추적하지 않음\n";
+								}
+								guild.first->v.userID.l.unlock();
 							}
+							else {
+								//std::cout << "길드는 같지만 추적안하는 통화방임\n";
+							}
+							guild.first->v.channelID.l.unlock();
 						}
-						else {								// 통화방에서 나갔다면
-							auto user = m_umTracking.find(event.state.user_id);
-							if (user != m_umTracking.end()) {	// 추적하던 유저라면
-								user->second.END_TIME = dpp::utility::time_f();
-								//std::cout << user->second.END_TIME - user->second.START_TIME << "s" << std::endl;
-								m_qDBdata.emplace(user);
-								m_umTracking.erase(event.state.user_id);
-								std::cout << event.state.user_id << "퇴장\n";
+						else {													// 통화방에서 나갔다면
+							auto user = m_tracking.Find(event.state.user_id);
+							if (user.second) {									// 추적중인 유저라면
+								user.first->v.END_TIME = dpp::utility::time_f();
+								m_DB.Multiple_Insert(user.first->v.userID, user.first->v);
+								//std::cout << user.first->v.deltaTime() << '\n';
+								m_tracking.Remove(event.state.user_id);
+								//std::cout << event.state.user_id << "퇴장\n";
+								save_db();
+							}
+							else {
+								//std::cout << "추적 안하는 애임\n";
 							}
 						}
 					}
 					else {
 						//std::cout << "화리에도 없음\n";
 					}
-
 				}
 				});
 		}
@@ -148,272 +192,103 @@ void Bot::Run()
 
 void Bot::save_db()
 {
-	std::ifstream inputFile("DB.txt");
-	if (!inputFile.is_open()) {
-		std::cerr << "파일을 읽을 수 없습니다!" << std::endl;
+	std::ifstream inputFile("DB.json", std::ios::binary);
+	nlohmann::ordered_json j;
+	if (inputFile) {
+		inputFile >> j;
+		inputFile.close();
 	}
-	std::ofstream outputFile("DB.txt");
-	//while (m_qUserDB.size()) {
-	//	auto data = m_qUserDB.front();
-	//	m_qUserDB.pop();
-	//	if (data.END_TIME == 0) {
 
-	//	}
-	//	else {
-	//		auto delta_time = data.END_TIME - data.START_TIME;
-	//	}
-	//}
-//	if (!outputFile.is_open()) {
-//		std::cerr << "파일을 열 수 없습니다!" << std::endl;
-//		return;
-//	}
-//	// XML 형식으로 출력
-//	std::string content = R"(<[server_ID]>
-//	<CURRENT>
-//	</CURRENT>
-//	<USERS>
-//	</USERS>
-//</[server_ID]>
-//)";
-//	outputFile << content;
-	// 파일 닫기
-	outputFile.close();
+	m_DB.Save_DB(j);
+
+	std::ofstream outputFile("DB.json", std::ios::binary);
+	if (outputFile) {
+		outputFile << j.dump(4);
+		outputFile.close();
+	}
 	return;
 }
 
 void Bot::save_whitelist()
 {
-	std::unordered_map<dpp::snowflake, Whitelist> wlDB;
-	m_sm_wldb.lock_shared();
-	std::ifstream inputFile("WhiteList.json",std::ios::binary);
-	std::string line;
+	m_sm_wldb.lock();
+	std::ifstream inputFile("WhiteList.json", std::ios::binary);
+	crawin::LF_hash_skiplist<dpp::snowflake, Whitelist> wlDB;
 	if (inputFile) {
-		// load_untracking_whitelist
-		while (std::getline(inputFile, line)) {
-			if (line.find("\"SERVERS\": [") != std::string::npos) {
-				unsigned long long serverid;
-				bool onmemory = true;
-				while (std::getline(inputFile, line)) {
-					if (line[0] == ']')
-						break;
+		nlohmann::json j;
+		inputFile >> j;
 
-					if (line.find("\"SERVERID\":") != std::string::npos) {
-						size_t start = line.find(" ");
-						size_t end = line.find(",");
-						serverid = std::stoull(line.substr(start + 1, end - (start + 1)));
-						auto result_it = m_umWhitelist.find(serverid);
-						if (result_it == m_umWhitelist.end()) {
-							//메모리에 올라가있지 않은 화리
-							wlDB.try_emplace(serverid);
-							onmemory = false;
+		if (j.contains("SERVERS")) {
+			for (const auto& server : j["SERVERS"]) {
+				unsigned long long serverID = std::stoull(server["SERVERID"].get<std::string>());
+				auto result = m_whitelist.Find(serverID);
+				if (result.second == false) {
+					auto inserted = wlDB.Insert(serverID, Whitelist(dpp::utility::time_f(), NULL, NULL));
+					if (server.contains("CHANNELS")) {
+						for (const auto& ch : server["CHANNELS"]) {
+							unsigned long long channelID = std::stoull(ch.get<std::string>());
+							inserted.first->v.lastTime = dpp::utility::time_f();
+							inserted.first->v.channelID.emplace(channelID);
 						}
-						else {
-							onmemory = true;
-						}
-						continue;
 					}
-
-					if (onmemory == true) {
-						continue;
-					}
-
-					if (line.find("\"CHANNELS\":") != std::string::npos) {
-						size_t start = line.find("[");
-						size_t end = line.find("]");
-						size_t curr = start;
-						std::string num;
-						while (curr < end) {
-							if (line[curr] == ',') {
-								num = line.substr(start + 1, curr - (start + 1));
-								wlDB[serverid].channelID.emplace(std::stoull(num));
-								start = curr;
-							}
-							++curr;
+					if (server.contains("USERS")) {
+						for (const auto& user : server["USERS"]) {
+							unsigned long long userID = std::stoull(user.get<std::string>());
+							inserted.first->v.lastTime = dpp::utility::time_f();
+							inserted.first->v.userID.emplace(userID);
 						}
-						num = line.substr(start + 1, end - (start + 1));
-						if (num.size()) {
-							wlDB[serverid].channelID.emplace(std::stoull(num));
-						}
-						continue;
-					}
-					if (line.find("\"USERS\":") != std::string::npos) {
-						size_t start = line.find("[");
-						size_t end = line.find("]");
-						size_t curr = start;
-						std::string num;
-						while (curr < end) {
-							if (line[curr] == ',') {
-								num = line.substr(start + 1, curr - (start + 1));
-								wlDB[serverid].userID.emplace(std::stoull(num));
-								start = curr;
-							}
-							++curr;
-						}
-							num = line.substr(start + 1, end - (start + 1));
-						if (num.size()) {
-							wlDB[serverid].userID.emplace(std::stoull(num));
-						}
-						continue;
 					}
 				}
 			}
 		}
+		//std::cout << "미추적중인 화리 업로드" << "/ " << std::this_thread::get_id() << '\n';
 		inputFile.close();
 	}
-	else
-	{
-		std::cerr << "파일을 읽을 수 없습니다!" << std::endl;
-	}
-	m_sm_wldb.unlock_shared();
 
-	m_sm_wldb.lock();
 	std::ofstream outputFile("WhiteList.json",std::ios::binary);
 	if (outputFile) {
-		outputFile << "{\n\"SERVERS\": [\n";
-		bool firstServer = true;
-		for (const auto& [serverid, wl] : m_umWhitelist) {
-			if (!firstServer)
-				outputFile << ",\n";
-			else
-				firstServer = false;
-			outputFile << "{\n\"SERVERID\": " << serverid << ",\n\"CHANNELS\": [";
-
-			bool firstChannel = true;
-			for (const auto& ch : wl.channelID) {
-				if (!firstChannel)
-					outputFile << ", ";
-				else
-					firstChannel = false;
-				outputFile << ch;
-			}
-
-			outputFile << "],\n\"USERS\": [";
-			firstChannel = true;
-			for (const auto& usr : wl.userID) {
-				if (!firstChannel)
-					outputFile << ", ";
-				else
-					firstChannel = false;
-				outputFile << usr;
-			}
-			outputFile << "]\n}";
-		}
-
-		for (const auto& [serverid, wl] : wlDB) {
-			if (!firstServer)
-				outputFile << ",\n";
-			else
-				firstServer = false;
-			outputFile << "{\n\"SERVERID\": " << serverid << ",\n\"CHANNELS\": [";
-
-			bool firstChannel = true;
-			for (const auto& ch : wl.channelID) {
-				if (!firstChannel)
-					outputFile << ", ";
-				else
-					firstChannel = false;
-				outputFile << ch;
-			}
-
-			outputFile << "],\n\"USERS\": [";
-			firstChannel = true;
-			for (const auto& usr : wl.userID) {
-				if (!firstChannel)
-					outputFile << ", ";
-				else
-					firstChannel = false;
-				outputFile << usr;
-			}
-			outputFile << "]\n}";
-		}
-
-		outputFile << "\n]\n}";
+		nlohmann::ordered_json j;
+		m_whitelist.Save(j);
+		wlDB.Save(j);
+		outputFile << j.dump(4);
+		outputFile.close();
 	}
-	std::cout << "작성완료\n";
+	//std::cout << "작성완료\n";
 	m_sm_wldb.unlock();
 }
 
 bool Bot::find_whitelist_in_DB(const unsigned long long& guild_id)
 {
-	std::string line;
 	bool found_on_db = false;
 	m_sm_wldb.lock_shared();
 	std::ifstream inputFile("WhiteList.json", std::ios::binary);
 	if (inputFile) {
-		while (std::getline(inputFile, line)) {
-			if (line.find("\"SERVERS\": [") != std::string::npos) {
-				unsigned long long serverid;
-				while (std::getline(inputFile, line)) {
-					if (line[0] == ']')
-						break;
-
-					if (line.find("\"SERVERID\":") != std::string::npos) {
-						size_t start = line.find(" ");
-						size_t end = line.find(",");
-						serverid = std::stoull(line.substr(start + 1, end - (start + 1)));
-						if (guild_id == serverid) {
-							//m_m_wl.lock();
-							m_umWhitelist.try_emplace(serverid, dpp::utility::time_f(), NULL, NULL);
-							//m_m_wl.unlock();
-							found_on_db = true;
+		nlohmann::json j;
+		inputFile >> j;
+		for (const auto& server : j["SERVERS"]) {
+			unsigned long long serverID = std::stoull(server["SERVERID"].get<std::string>());
+			if (serverID == guild_id) {
+				auto inserted = m_whitelist.Insert(serverID, Whitelist(dpp::utility::time_f(), NULL, NULL));
+				if (inserted.second) {
+					if (server.contains("CHANNELS")) {
+						for (const auto& ch : server["CHANNELS"]) {
+							unsigned long long channelID = std::stoull(ch.get<std::string>());
+							inserted.first->v.lastTime = dpp::utility::time_f();
+							inserted.first->v.channelID.emplace(channelID);
 						}
-						else {
-							found_on_db = false;
-						}
-						continue;
 					}
-					if (found_on_db == false) {
-						continue;
+					if (server.contains("USERS")) {
+						for (const auto& user : server["USERS"]) {
+							unsigned long long userID = std::stoull(user.get<std::string>());
+							inserted.first->v.lastTime = dpp::utility::time_f();
+							inserted.first->v.userID.emplace(userID);
+						}
 					}
-
-					if (line.find("\"CHANNELS\":") != std::string::npos) {
-						size_t start = line.find("[");
-						size_t end = line.find("]");
-						size_t curr = start;
-						std::string num;
-						//m_m_wl.lock();
-						while (curr < end) {
-							if (line[curr] == ',') {
-								num = line.substr(start + 1, curr - (start + 1));
-								m_umWhitelist[serverid].channelID.emplace(std::stoull(num));
-								start = curr;
-							}
-							++curr;
-						}
-						num = line.substr(start + 1, end - (start + 1));
-						if (num.size()) {
-							m_umWhitelist[serverid].channelID.emplace(std::stoull(num));
-						}
-						//m_m_wl.unlock();
-						continue;
-					}
-					if (line.find("\"USERS\":") != std::string::npos) {
-						size_t start = line.find("[");
-						size_t end = line.find("]");
-						size_t curr = start;
-						std::string num;
-						while (curr < end) {
-							if (line[curr] == ',') {
-								num = line.substr(start + 1, curr - (start + 1));
-								m_umWhitelist[serverid].userID.emplace(std::stoull(num));
-								start = curr;
-							}
-							++curr;
-						}
-						num = line.substr(start + 1, end - (start + 1));
-						if (num.size()) {
-							m_umWhitelist[serverid].userID.emplace(std::stoull(num));
-						}
-						break;
-					}
+					found_on_db = true;
 				}
 			}
 		}
 		inputFile.close();
-	}
-	else
-	{
-		std::cerr << "파일을 읽을 수 없습니다!" << std::endl;
 	}
 	m_sm_wldb.unlock_shared();
 	return found_on_db;
@@ -429,48 +304,30 @@ void Bot::test(int n)
 	while (n--) {
 		auto start = std::chrono::high_resolution_clock::now();
 
-		for (int i = 0; i < 5; ++i) {
+		for (int i = 0; i < 1; ++i) {
 			vt.emplace_back(&Bot::test_func, this, i * 10000000 + 1);
 		}
 		for (auto& t : vt) {
 			t.join();
 		}
 		vt.clear();
-		m_lfhsl.Clear();
-		//std::cout << "finish\n";
-		std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() <<"ms" << std::endl;
-		m_lfhsl.Print();
+		//m_whitelist.Clear();
+		////std::cout << "finish\n";
+		////std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() <<"ms" << std::endl;
+		//m_whitelist.Print();
 	}
 }
 
 void Bot::test_func(const int& start)
 {
-	int r, key;
-	for (volatile int i = 0; i < 10000000; ++i) {
-		//printf("Threadid: %d [%d]\n", m_lfmsl.m_thread_id, i);
-		//std::cout << m_lfmsl.m_thread_id << std::endl;
-		//if (m_lfhsl.Insert(i + start, Whitelist(i + start, i + start, i + start)) == false) {
-		//	std::cout << i + start << "삽입 실패\n";
-		//}
-		//if (m_lfhsl.Find(i + start) == false) {
-		//	std::cout << i + start << "검색 실패\n";
-		//}
-		//if (m_lfhsl.Remove(i + start) == false) {
-		//	std::cout << i + start << "삭제 실패\n";
-		//}
-		r = rand() % 3;
-		key = rand() % 1000;
-		switch (r) {
-		case 0:
-			m_lfhsl.Insert(key, Whitelist(key, key, key));
-			break;
-		case 1:
-			m_lfhsl.Find(key);
-			break;
-		case 2:
-			m_lfhsl.Remove(key);
-			break;
-		}
-	}
-	//m_lfhsl.m_free_queue
+	auto result = m_whitelist.Insert(99, Whitelist(0, 88, 77));
+	//m_whitelist.Remove(99);
+	result.first->v.channelID.emplace(66);
+	result.first->v.userID.emplace(55);
+
+	result = m_whitelist.Insert(88, Whitelist(0, 44, 33));
+	//result = m_whitelist.Multiple_Insert(88, Whitelist(0, 22, 11));
+	//m_whitelist.Print();
+	//result = m_whitelist.Insert(99, Whitelist(0, 66, 55));
+	////std::cout << result.second << '\n';
 }

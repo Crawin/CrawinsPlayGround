@@ -3,3 +3,4 @@
 #include <dpp/dpp.h>
 #include "lua.hpp"
 #include <iostream>
+#include <nlohmann/json.hpp>

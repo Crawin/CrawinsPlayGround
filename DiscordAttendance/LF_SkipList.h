@@ -342,6 +342,353 @@ namespace crawin {
 	}
 	*/
 
+	template<typename Key>
+	class LF_SKIPLIST {
+	private:
+		std::atomic_int n_threads = 1;
+		static constexpr char max_level = 5;
+
+		class Node;
+
+		class Stamped_Node {
+		private:
+			std::atomic_ullong stptr;
+		public:
+			void set_ptr(Node* ptr) {
+				stptr = reinterpret_cast<unsigned long long>(ptr);
+			}
+
+			Node* get_ptr(bool& removed) {
+				long long p = stptr;
+				removed = (p & 1) == 1;
+				return reinterpret_cast<Node*>(stptr & 0xFFFFFFFFFFFFFFFE);
+			}
+
+			bool CAS(Node* old_p, Node* new_p, bool old_m, bool new_m)
+			{
+				unsigned long long old_v = reinterpret_cast<unsigned long long>(old_p);
+				if (true == old_m) old_v = old_v | 1;
+				else
+					old_v = old_v & 0xFFFFFFFFFFFFFFFE;
+				unsigned long long new_v = reinterpret_cast<unsigned long long>(new_p);
+				if (true == new_m) new_v = new_v | 1;
+				else
+					new_v = new_v & 0xFFFFFFFFFFFFFFFE;
+				return std::atomic_compare_exchange_strong(&stptr, &old_v, new_v);
+			}
+		};
+
+		class Node {
+		public:
+			Key k;
+			int level;
+			Stamped_Node next[max_level + 1];
+			unsigned long long ebr_number;
+			std::chrono::steady_clock::time_point removed_time;
+			Node() {}
+			Node(const Key& key, const int& top) :k(key), level(top), ebr_number(0) {
+				for (int i = 0; i <= max_level; ++i) {
+					next[i].set_ptr(nullptr);
+				}
+			}
+		};
+
+		class EBR {
+			std::atomic_ullong epoch_counter;
+			std::atomic_ullong* epoch_array;
+			inline static char max_threads = std::thread::hardware_concurrency();
+		public:
+			EBR() :epoch_counter(1) {
+				epoch_array = new std::atomic_ullong[max_threads * 16];
+				//std::cout << "EBR 생성자"<< std::thread::hardware_concurrency()<<"개 생성\n";
+			}
+			~EBR() {
+				//std::cout << "EBR 소멸자\n";
+				delete[] epoch_array;
+				epoch_counter = 1;
+			}
+			void start_epoch() {
+				unsigned long long epoch = epoch_counter++;
+				epoch_array[(m_thread_id - 1) * 16] = epoch;
+			}
+
+			void end_epoch() {
+				epoch_array[(m_thread_id - 1) * 16] = 0;
+			}
+
+			Node* get_node(const Key& key) {
+				int lv = 0;
+				for (int i = 0; i < max_level; ++i) {
+					if (rand() % 2 == 0) break;
+					lv++;
+				}
+
+				if (m_free_queue.node_queue.empty())
+					return new Node(key, lv);
+
+				Node* n = m_free_queue.node_queue.front();
+				auto now = std::chrono::steady_clock::now();
+				while (now - n->removed_time > std::chrono::seconds(1)) {
+					//std::cout << "1초 경과로 인한 노드 삭제!\n";
+					m_free_queue.node_queue.pop();
+					delete n;
+					if (m_free_queue.node_queue.empty()) {
+						return new Node(key, lv);
+					}
+					n = m_free_queue.node_queue.front();
+				}
+
+				for (int i = 0; i < max_threads; ++i) {
+					if ((epoch_array[i * 16] != 0) && (epoch_array[i * 16] < n->ebr_number)) {
+						return new Node(key, lv);
+					}
+				}
+				m_free_queue.node_queue.pop();
+				n->k = key;
+				for (int i = 0; i <= n->level; ++i) {
+					n->next[i].set_ptr(nullptr);
+				}
+				n->level = lv;
+				n->removed_time = std::chrono::steady_clock::time_point{};
+				//std::cout << key << "재사용\n";
+				return n;
+			}
+			void reuse(Node* node) {
+				node->ebr_number = epoch_counter;
+				node->removed_time = std::chrono::steady_clock::now();
+				m_free_queue.node_queue.emplace(node);
+			}
+			void reset() {
+				epoch_counter = 1;
+			}
+		};
+
+		class Free_queue {
+		public:
+			std::queue<Node*> node_queue;
+			Free_queue() {
+				//std::cout << "생성자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << '\n';
+			}
+			~Free_queue() {
+				//std::cout << "소멸자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << " size: " << node_queue.size() << "i: " << m_thread_id << '\n';
+				while (node_queue.size()) {
+					Node* n = node_queue.front();
+					delete n;
+					node_queue.pop();
+				}
+			}
+		};
+
+		void set_thread_id() {
+			if (m_thread_id == 0) {
+				int id = n_threads++;
+				m_thread_id = id;
+			}
+		}
+
+		EBR ebr;
+		Node head, tail;
+	public:
+		LF_SKIPLIST() {
+			head.k = 0;
+			head.level = max_level;
+			if (std::numeric_limits<Key>::max() > 0) {
+				tail.k = std::numeric_limits<Key>::max();
+			}
+			else {
+				tail.k = std::numeric_limits<unsigned long long>::max();
+			}
+			tail.level = max_level;
+			for (auto& p : head.next)
+			{
+				p.set_ptr(&tail);
+			}
+			//std::cout << "LF_skiplist 생성자\n";
+		}
+		~LF_SKIPLIST() {}
+
+		std::pair<Node*, bool> find(const Key& key, Node* prevs[], Node* currs[]) {
+			set_thread_id();
+			ebr.start_epoch();
+			Node* prev, * curr, * curr_next;
+			bool removed = false;
+		retry:
+			while (true) {
+				prev = &head;
+				for (int level = max_level; level >= 0; --level) {
+					curr = prev->next[level].get_ptr(removed);
+					curr_next = curr->next[level].get_ptr(removed);
+					while (removed == true) {
+						// 죽은 노드들 연결 끊어주기~
+						if (prev->next[level].CAS(curr, curr_next, false, false) == false) {
+							goto retry;
+						}
+						curr = prev->next[level].get_ptr(removed);
+						curr_next = curr->next[level].get_ptr(removed);
+					}
+
+					if (curr->k < key) {
+						prev = curr;
+						++level;
+						continue;
+					}
+					prevs[level] = prev;
+					currs[level] = curr;
+				}
+				Key curr_key = curr->k;
+				ebr.end_epoch();
+				return std::make_pair(curr, curr_key == key);
+			}
+		}
+
+		std::pair<Node*, bool> insert(const Key& key) {
+			set_thread_id();
+			ebr.start_epoch();
+			Node* prevs[max_level + 1]{ nullptr, };
+			Node* currs[max_level + 1]{ nullptr, };
+			Node* n = ebr.get_node(key);
+			while (true) {
+				std::pair<Node*, bool> found = find(key, prevs, currs);
+				if (found.second) {
+					ebr.reuse(n);
+					ebr.end_epoch();
+					//delete n;
+					return std::make_pair(found.first, false);
+				}
+				for (int level = 0; level <= n->level; ++level) {
+					n->next[level].set_ptr(currs[level]);
+				}
+				if (false == prevs[0]->next[0].CAS(currs[0], n, false, false))
+					continue;
+				for (int level = 1; level <= n->level; ++level) {
+					while (true) {
+						if (prevs[level]->next[level].CAS(currs[level], n, false, false)) break;
+						find(key, prevs, currs);
+					}
+				}
+				ebr.end_epoch();
+				return std::make_pair(n, true);
+			}
+
+		}
+
+		bool remove(const Key& key) {
+			set_thread_id();
+			ebr.start_epoch();
+			Node* prevs[max_level + 1]{ nullptr, };
+			Node* currs[max_level + 1]{ nullptr, };
+			Node* succ = nullptr;
+			bool removed = false;
+			std::pair<Node*, bool> found = find(key, prevs, currs);
+			if (found.second == false) {
+				ebr.end_epoch();
+				//std::cout << "존재하지 않는 " << key << std::endl;
+				return false;
+			}
+			for (int level = currs[0]->level; level > 0; --level) {
+				succ = currs[0]->next[level].get_ptr(removed);
+				while (removed == false) {
+					currs[0]->next[level].CAS(succ, succ, false, true);
+					succ = currs[0]->next[level].get_ptr(removed);
+				}
+			}
+
+			succ = currs[0]->next[0].get_ptr(removed);
+			if (currs[0]->next[0].CAS(succ, succ, false, true)) {
+				Node* temp = currs[0];
+				find(key, prevs, currs);
+				ebr.reuse(temp);
+				ebr.end_epoch();
+				return true;
+			}
+			//std::cout << "마킹이 실패" << key << std::endl;
+			ebr.end_epoch();
+			return false;
+		}
+
+		std::pair<Node*, bool> contains(const Key& key) {
+			set_thread_id();
+			ebr.start_epoch();
+			bool removed = false;
+			Node* prev{ &head };
+			Node* curr{ nullptr };
+			Node* succ{ nullptr };
+			for (int level = max_level; level >= 0; --level) {
+				curr = prev->next[level].get_ptr(removed);
+				while (true) {
+					succ = curr->next[level].get_ptr(removed);
+					while (removed == true) {
+						curr = curr->next[level].get_ptr(removed);
+						succ = curr->next[level].get_ptr(removed);
+					}
+					if (curr->k < key) {
+						prev = curr;
+						curr = succ;
+					}
+					else break;
+				}
+			}
+			auto result = curr->k;
+			ebr.end_epoch();
+			return std::make_pair(curr, result == key);
+		}
+
+		void clear() {
+			bool removed = false;
+			Node* curr = head.next[0].get_ptr(removed);
+			Node* temp;
+			//int num = 0;
+			while (curr != &tail) {
+				temp = curr;
+				curr = curr->next[0].get_ptr(removed);
+				//if (removed)++num;
+				delete temp;
+			}
+			////std::cout << num << "개 발견\n";
+			for (int i = 0; i <= max_level; ++i) {
+				head.next[i].set_ptr(&tail);
+			}
+			this->ebr.reset();
+		}
+
+		void print() {
+			Node* c = &head;
+			bool removed = false;
+			while (c != &tail) {
+				//std::cout << c->k;
+				if (removed) {
+					//std::cout << " (removed)";
+				}
+				//std::cout << " -> ";
+				c = c->next[0].get_ptr(removed);
+			}
+		}
+
+		void Save(nlohmann::ordered_json& j,const std::string Key) {
+			bool removed = false;
+			Node* c = &head;
+			c = c->next[0].get_ptr(removed);
+			while (c != &tail) {
+				if (removed) {
+					c = c->next[0].get_ptr(removed);
+					continue;
+				}
+				j[Key].emplace_back(c->k);
+				c = c->next[0].get_ptr(removed);
+			}
+		}
+
+		static thread_local Free_queue m_free_queue;
+		static thread_local int m_thread_id;
+	};
+	template<typename Key>
+	thread_local typename LF_SKIPLIST<Key>::Free_queue LF_SKIPLIST<Key>::m_free_queue;
+
+	template<typename Key>
+	thread_local int LF_SKIPLIST<Key>::m_thread_id;
+
+
+
 	template<typename Key, typename Value>
 	class LF_hash_skiplist {
 	private:
@@ -387,7 +734,8 @@ namespace crawin {
 			unsigned long long ebr_number;
 			std::chrono::steady_clock::time_point removed_time;
 			Node() {}
-			Node(const Key& key, const Value& value, const int& top) :k(key), v(value), level(top), ebr_number(0) {
+			Node(const Key& key, const Value& value, const int& top) :k(key), level(top), ebr_number(0) {
+				v = value;
 				for (int i = 0; i <= max_level; ++i) {
 					next[i].set_ptr(nullptr);
 				}
@@ -407,6 +755,13 @@ namespace crawin {
 				//std::cout << "EBR 소멸자\n";
 				delete[] epoch_array;
 				epoch_counter = 1;
+
+				//std::cout << "freequeue 정리\n";
+				while (m_free_queue.node_queue.size()) {
+					Node* n = m_free_queue.node_queue.front();
+					delete n;
+					m_free_queue.node_queue.pop();
+				}
 			}
 			void start_epoch() {
 				unsigned long long epoch = epoch_counter++;
@@ -417,7 +772,7 @@ namespace crawin {
 				epoch_array[(m_thread_id - 1) * 16] = 0;
 			}
 
-			Node* get_node(Key key, Value value) {
+			Node* get_node(const Key& key, const Value& value) {
 				int lv = 0;
 				for (int i = 0; i < max_level; ++i) {
 					if (rand() % 2 == 0) break;
@@ -430,7 +785,7 @@ namespace crawin {
 				Node* n = m_free_queue.node_queue.front();
 				auto now = std::chrono::steady_clock::now();
 				while (now - n->removed_time > std::chrono::seconds(1)) {
-					std::cout << "1초 경과로 인한 노드 삭제!\n";
+					//std::cout << "1초 경과로 인한 노드 삭제!\n";
 					m_free_queue.node_queue.pop();
 					delete n;
 					if (m_free_queue.node_queue.empty()) {
@@ -468,12 +823,12 @@ namespace crawin {
 		class Free_queue {
 		public:
 			std::queue<Node*> node_queue;
-			std::queue<int> test_queue;
+			//std::queue<int> test_queue;
 			Free_queue() {
-				std::cout << "생성자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << '\n';
+				//std::cout << "생성자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << '\n';
 			}
 			~Free_queue() {
-				std::cout << "소멸자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << " size: "<< node_queue.size() << '\n';
+				//std::cout << "소멸자[" << std::this_thread::get_id() << "] type: " << typeid(*this).name() << " size: "<< node_queue.size() <<"i: "<<m_thread_id << '\n';
 				while (node_queue.size()) {
 					Node* n = node_queue.front();
 					delete n;
@@ -505,7 +860,7 @@ namespace crawin {
 			}
 			~LF_skiplist() {}
 
-			bool find(const Key& key, Node* prevs[], Node* currs[]) {
+			std::pair<Node*,bool> find(const Key& key, Node* prevs[], Node* currs[]) {
 				ebr.start_epoch();
 				Node* prev, *curr, *curr_next;
 				bool removed = false;
@@ -534,23 +889,22 @@ namespace crawin {
 					}
 					Key curr_key = curr->k;
 					ebr.end_epoch();
-					return curr_key == key;
+					return std::make_pair(curr, curr_key == key);
 				}
 			}
 
-			bool insert(const Key& key, const Value& value) {
+			std::pair<Node*,bool> insert(const Key& key, const Value& value) {
 				ebr.start_epoch();
 				Node* prevs[max_level + 1]{ nullptr, };
 				Node* currs[max_level + 1]{ nullptr, };
 				Node* n = ebr.get_node(key, value);
 				while (true) {
-					bool found = find(key, prevs, currs);
-					if (found) {
-						bool f = false;
+					std::pair<Node*,bool> found = find(key, prevs, currs);
+					if (found.second) {
 						ebr.reuse(n);
 						ebr.end_epoch();
 						//delete n;
-						return false;
+						return std::make_pair(found.first, false);
 					}
 					for (int level = 0; level <= n->level; ++level) {
 						n->next[level].set_ptr(currs[level]);
@@ -564,18 +918,41 @@ namespace crawin {
 						}
 					}
 					ebr.end_epoch();
-					return true;
+					return std::make_pair(n, true);
 				}
-
 			}
+
+			std::pair<Node*, bool> multiple_insert(const Key& key, const Value& value) {
+				ebr.start_epoch();
+				Node* prevs[max_level + 1]{ nullptr, };
+				Node* currs[max_level + 1]{ nullptr, };
+				Node* n = ebr.get_node(key, value);
+				while (true) {
+					std::pair<Node*, bool> found = find(key, prevs, currs);
+					for (int level = 0; level <= n->level; ++level) {
+						n->next[level].set_ptr(currs[level]);
+					}
+					if (false == prevs[0]->next[0].CAS(currs[0], n, false, false))
+						continue;
+					for (int level = 1; level <= n->level; ++level) {
+						while (true) {
+							if (prevs[level]->next[level].CAS(currs[level], n, false, false)) break;
+							find(key, prevs, currs);
+						}
+					}
+					ebr.end_epoch();
+					return std::make_pair(n, true);
+				}
+			}
+
 			bool remove(const Key& key) {
 				ebr.start_epoch();
 				Node* prevs[max_level + 1]{ nullptr, };
 				Node* currs[max_level + 1]{ nullptr, };
 				Node* succ = nullptr;
 				bool removed = false;
-				bool found = find(key, prevs, currs);
-				if (found == false) {
+				std::pair<Node*, bool> found = find(key, prevs, currs);
+				if (found.second == false) {
 					ebr.end_epoch();
 					//std::cout << "존재하지 않는 " << key << std::endl;
 					return false;
@@ -601,7 +978,7 @@ namespace crawin {
 				return false;
 			}
 
-			bool contains(const Key& key) {
+			std::pair<Node*, bool> contains(const Key& key) {
 				ebr.start_epoch();
 				bool removed = false;
 				Node* prev{ &head };
@@ -624,7 +1001,7 @@ namespace crawin {
 				}
 				auto result = curr->k;
 				ebr.end_epoch();
-				return (result == key);
+				return std::make_pair(curr, result == key);
 			}
 
 			void clear() {
@@ -635,10 +1012,10 @@ namespace crawin {
 				while (curr != &tail) {
 					temp = curr;
 					curr = curr->next[0].get_ptr(removed);
-					if (removed)++num;
+					//if (removed)++num;
 					delete temp;
 				}
-				//std::cout << num << "개 발견\n";
+				////std::cout << num << "개 발견\n";
 				for (int i = 0; i <= max_level; ++i) {
 					head.next[i].set_ptr(&tail);
 				}
@@ -649,19 +1026,51 @@ namespace crawin {
 				Node* c = &head;
 				bool removed = false;
 				while (c != &tail) {
-					std::cout << c->k;
+					//std::cout << c->k;
 					if (removed) {
-						std::cout << " (removed)";
+						//std::cout << " (removed)";
 					}
-					std::cout << " -> ";
+					//std::cout << " -> ";
 					c = c->next[0].get_ptr(removed);
 				}
 			}
+
+			void save_server(nlohmann::ordered_json& j) {
+				bool removed = false;
+				Node* c = &head;
+				c = c->next[0].get_ptr(removed);
+				while (c != &tail) {
+					if (removed) {
+						c = c->next[0].get_ptr(removed);
+						continue;
+					}
+					nlohmann::ordered_json server;
+					server["SERVERID"] = std::to_string(c->k);
+					c->v.channelID.Save(server,"CHANNELS");
+					c->v.userID.Save(server,"USERS");
+					j["SERVERS"].emplace_back(server);
+
+					c = c->next[0].get_ptr(removed);
+				}
+			}
+
+			void save_db(nlohmann::ordered_json& j) {
+				bool removed = false;
+				Node* c = &head;
+				Node* temp;
+				c = c->next[0].get_ptr(removed);
+				while (c != &tail) {
+					if (removed) {
+						c = c->next[0].get_ptr(removed);
+						continue;
+					}
+					c->v.Save(j);
+					temp = c;
+					c = c->next[0].get_ptr(removed);
+					remove(temp->k);
+				}
+			}
 		};
-
-		static constexpr char bucket_size = 11;
-
-		LF_skiplist buckets[bucket_size];
 
 		std::hash<Key> hash_func;
 
@@ -671,6 +1080,10 @@ namespace crawin {
 				m_thread_id = id;
 			}
 		}
+
+	protected:
+		static constexpr char bucket_size = 11;
+		LF_skiplist buckets[bucket_size];
 	public:
 		LF_hash_skiplist() {
 			//std::cout << "LF_hash_skiplist 생성자\n";
@@ -679,18 +1092,24 @@ namespace crawin {
 			//std::cout << "LF_hash_skiplist 소멸자\n";
 		}
 
-		bool Find(const Key& key) {
+		std::pair<Node*, bool> Find(const Key& key) {
 			set_thread_id();
 			unsigned char index = hash_func(key) % bucket_size;
 			return buckets[index].contains(key);
 		}
 
-		bool Insert(const Key& key, const Value& value) {
+		std::pair<Node*,bool> Insert(const Key& key, const Value& value) {
 			set_thread_id();
 			unsigned char index = hash_func(key) % bucket_size;
 			return buckets[index].insert(key, value);
 			//std::cout << m_thread_id << '\n';
 			//Node* n = new Node(key, value, rand() % (max_level + 1));
+		}
+		
+		std::pair<Node*, bool> Multiple_Insert(const Key& key, const Value& value) {
+			set_thread_id();
+			unsigned char index = hash_func(key) % bucket_size;
+			return buckets[index].multiple_insert(key, value);
 		}
 
 		bool Remove(const Key& key) {
@@ -701,15 +1120,27 @@ namespace crawin {
 
 		void Print() {
 			for (int i = 0; i < bucket_size; ++i) {
-				std::cout << "===========" << i << "===========\n";
+				//std::cout << "===========" << i << "===========\n";
 				buckets[i].print();
-				std::cout << std::endl;
+				//std::cout << std::endl;
 			}
 		}
 
 		void Clear() {
 			for (int i = 0; i < bucket_size; ++i) {
 				buckets[i].clear();
+			}
+		}
+
+		void Save(nlohmann::ordered_json& j) {
+			for (int i = 0; i < bucket_size; ++i) {
+				buckets[i].save_server(j);
+			}
+		}
+
+		void Save_DB(nlohmann::ordered_json& j) {
+			for (int i = 0; i < bucket_size; ++i) {
+				buckets[i].save_db(j);
 			}
 		}
 

@@ -44,16 +44,16 @@ void server_commands(Server& server, boost::asio::io_context& io_context) {
 
 int main()
 {
-	//boost::asio::io_context io_context;
-	//Server server(io_context);
+	boost::asio::io_context io_context;
+	Server server(io_context);
 	std::vector<std::thread> threads;
-	//for (unsigned int i = 0; i < /*1*/std::thread::hardware_concurrency() / 2; ++i) {
-	//	threads.emplace_back([&io_context]() {io_context.run(); });
-	//}
+	for (unsigned int i = 0; i < /*1*/std::thread::hardware_concurrency() / 2; ++i) {
+		threads.emplace_back([&io_context]() {io_context.run(); });
+	}
 	Bot bot;
 	threads.emplace_back([&bot]() {bot.Run(); });
 
-	//server_commands(server, io_context);
+	server_commands(server, io_context);
 
 	for (auto& thread : threads) {
 		thread.join();
