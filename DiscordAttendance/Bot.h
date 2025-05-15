@@ -48,7 +48,7 @@ struct DB_DATA {
 #ifdef _WIN32
 		localtime_s(&timeinfo, &startTimeSec);
 #else
-		localtime_r(&timeSec, &timeinfo);
+		localtime_r(&startTimeSec, &timeinfo);
 #endif
 
 		std::string start_year = std::to_string(timeinfo.tm_year + 1900);

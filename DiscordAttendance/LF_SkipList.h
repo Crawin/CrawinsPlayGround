@@ -664,7 +664,7 @@ namespace crawin {
 			}
 		}
 
-		void Save(nlohmann::ordered_json& j,const std::string Key) {
+		void Save(nlohmann::ordered_json& j,const std::string K) {
 			bool removed = false;
 			Node* c = &head;
 			c = c->next[0].get_ptr(removed);
@@ -673,7 +673,7 @@ namespace crawin {
 					c = c->next[0].get_ptr(removed);
 					continue;
 				}
-				j[Key].emplace_back(c->k);
+				j[K].emplace_back(c->k);
 				c = c->next[0].get_ptr(removed);
 			}
 		}
