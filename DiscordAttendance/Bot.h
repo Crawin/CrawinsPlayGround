@@ -151,7 +151,7 @@ private:
 	crawin::LF_hash_skiplist<dpp::snowflake,DB_DATA> m_tracking;
 	crawin::LF_hash_skiplist<dpp::snowflake, Whitelist> m_whitelist;
 	crawin::LF_hash_skiplist<dpp::snowflake,DB_DATA> m_DB;
-
+	double m_dBeginTime;
 public:
 	Bot();
 	~Bot();

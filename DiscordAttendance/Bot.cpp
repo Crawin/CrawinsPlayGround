@@ -8,6 +8,7 @@ Bot::Bot()
 	//save_whitelist();
 	//test(1);
 	m_pCluster = new dpp::cluster(m_strBottoken);
+	m_dBeginTime = dpp::utility::time_f();
 }
 
 Bot::~Bot()
@@ -20,6 +21,7 @@ Bot::~Bot()
 void Bot::declare_commands()
 {
 	dpp::slashcommand pingcommand("ping", u8"서버 응답속도 확인", m_pCluster->me.id);
+	dpp::slashcommand runningtimecommand("runningtime", u8"봇 가동 시간 확인", m_pCluster->me.id);
 	dpp::slashcommand setchannelcommand("set-channel", u8"음성 채널 할당", m_pCluster->me.id);
 	setchannelcommand.add_option(
 		dpp::command_option(dpp::co_channel, "channelid", u8"기록할 음성 채널을 선택", true)
@@ -28,7 +30,7 @@ void Bot::declare_commands()
 	setIDcommand.add_option(
 		dpp::command_option(dpp::co_user, "userid", u8"기록할 유저를 선택", true)
 	);
-	m_pCluster->global_bulk_command_create({ pingcommand,setchannelcommand,setIDcommand });
+	m_pCluster->global_bulk_command_create({ pingcommand,runningtimecommand,setchannelcommand,setIDcommand });
 }
 
 void Bot::define_commands()
@@ -37,7 +39,7 @@ void Bot::define_commands()
 	m_pCluster->on_slashcommand([this](const dpp::slashcommand_t& event) {
 		auto command = event.command.get_command_name();
 		if (command == "ping") {
-			event.reply(std::to_string((event.command.get_creation_time() - dpp::utility::time_f()) * 1000) + "ms");
+			event.reply(std::to_string((dpp::utility::time_f() - event.command.get_creation_time()) * 1000) + "ms");
 			return;
 		}
 		if (command == "set-channel") {
@@ -62,6 +64,30 @@ void Bot::define_commands()
 			}
 			save_whitelist();
 			event.reply(dpp::message("ID: " + userid.str()).set_flags(dpp::m_ephemeral));
+			return;
+		}
+		if (command == "runningtime") {
+			double deltaTime = dpp::utility::time_f() - m_dBeginTime;
+			int days = static_cast<int>(deltaTime / 86400);
+			int hours = static_cast<int>((deltaTime - days * 86400) / 3600);
+			int minutes = static_cast<int>((deltaTime - days * 86400 - hours * 3600) / 60);
+			int seconds = static_cast<int>(deltaTime) % 60;
+
+			std::string runningtime = "";
+			if (days != 0)
+				runningtime += std::to_string(days) + " days ";
+			if (hours != 0)
+				runningtime += std::to_string(hours) + " hours ";
+			if (minutes != 0)
+				runningtime += std::to_string(minutes) + " mins ";
+			if (seconds != 0)
+				runningtime += std::to_string(seconds) + " secs ";
+
+			if (runningtime.empty()) {
+				runningtime += "0 sec";
+			}
+
+			event.reply(runningtime);
 			return;
 		}
 		});
