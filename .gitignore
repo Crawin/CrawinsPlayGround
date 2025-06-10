@@ -36,4 +36,8 @@
 *.ip
 
 VisualStudio/*
-Client/
+DiscordAttendance/OracleCloudKey/*
+botToken.txt
+Client/.vs/*
+Client/Client/*
+Client/x64/*
