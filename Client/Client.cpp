@@ -2,9 +2,10 @@
 //
 
 #include "Hotkey.h"
-#include "framework.h"
+#include "stdafx.h"
 #include "Client.h"
 #include "BoostClient.h"
+#include "SubWindows.h"
 
 #define MAX_LOADSTRING 100
 
@@ -20,7 +21,7 @@
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
-MIC mic;
+std::stack<CSubWindows*> g_sptrSubWindows;
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -104,19 +105,24 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
-
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
+       DWORD dwError = GetLastError();
+       wchar_t msg[256];
+       swprintf(msg, 256, L"CreateWindowEx failed! Error code: %lu", dwError);
+       MessageBox(NULL, msg, L"Error", MB_OK | MB_ICONERROR);
       return FALSE;
    }
+
+   //SetLayeredWindowAttributes(hWnd, 0, 100, LWA_ALPHA);
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
-   start();
+   //start();
    return TRUE;
 }
 
@@ -163,7 +169,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     case WM_KEYDOWN:
-        mic.MuteMicrophone();
+        switch (wParam) {
+        case VK_PAUSE:
+            break;
+        case VK_RETURN:
+        {
+            CHotkeyWindow* HotkeyPopup = new CHotkeyWindow(hInst);
+            HotkeyPopup->CreateSubWindow();
+            g_sptrSubWindows.push(HotkeyPopup);
+        }
+            break;
+        case VK_ESCAPE:
+            if (g_sptrSubWindows.size()) {
+                auto subwindow = g_sptrSubWindows.top();
+                g_sptrSubWindows.pop();
+            }
+            break;
+        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
