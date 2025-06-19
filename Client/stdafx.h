@@ -13,3 +13,9 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+
+#include <iostream>
+
+#include <stack>
+#include <vector>
+#include <list>
