@@ -85,7 +85,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CLIENT));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_CLIENT);
+    wcex.lpszMenuName   = /*MAKEINTRESOURCEW(IDC_CLIENT)*/nullptr;
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -105,8 +105,23 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
+
+   HWND hWndMonitor = nullptr;
+   HMONITOR hMonitior = MonitorFromWindow(hWndMonitor, MONITOR_DEFAULTTONEAREST);
+   MONITORINFO mi = {};
+   mi.cbSize = sizeof(MONITORINFO);
+   GetMonitorInfo(hMonitior, &mi);
+
+   int monitorWidth = mi.rcMonitor.right - mi.rcMonitor.left;
+   int monitorHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
+
+   int monitorCenterX = mi.rcMonitor.left + monitorWidth / 2;
+   int monitorCenterY = mi.rcMonitor.top + monitorHeight / 2;
+
+   RECT rc = { 0,0,monitorWidth / 2,monitorHeight / 2 };
+   AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, false);
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+       monitorWidth / 4, monitorHeight / 4, rc.right-rc.left, rc.bottom-rc.top, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -174,15 +189,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case VK_RETURN:
         {
-            CHotkeyWindow* HotkeyPopup = new CHotkeyWindow(hInst);
-            HotkeyPopup->CreateSubWindow();
-            g_sptrSubWindows.push(HotkeyPopup);
+            CStreamDeckWindow* StreamDeckPopup = new CStreamDeckWindow(hInst);
+            StreamDeckPopup->CreateSubWindow();
+            g_sptrSubWindows.emplace(StreamDeckPopup);
         }
             break;
         case VK_ESCAPE:
             if (g_sptrSubWindows.size()) {
                 auto subwindow = g_sptrSubWindows.top();
                 g_sptrSubWindows.pop();
+                subwindow->ReleaseSubWindow();
             }
             break;
         }

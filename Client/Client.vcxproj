@@ -105,6 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\CrawinsPlayGround\VisualStudio\Includes\boost_1_87_0;D:\CrawinsPlayGround\VisualStudio\Includes\lua-5.4.2_Win64_vc17_lib\include;D:\CrawinsPlayGround\DiscordAttendance;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
