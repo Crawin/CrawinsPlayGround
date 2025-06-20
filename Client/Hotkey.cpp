@@ -50,7 +50,6 @@ CMIC::CMIC()
         pEnumerator->Release();
         return;
     }
-    m_bMicMute = false;
     hr = pEndpointVolume->GetMute(&m_bMicMute);
 }
 
@@ -73,21 +72,28 @@ CMIC::~CMIC()
     }
 }
 
-void CMIC::MuteMicrophone()
+void CMIC::MuteMicrophone(const HWND& hWnd)
 {
+    m_bMicMute = !m_bMicMute;
     HRESULT hr;
-    hr = pEndpointVolume->SetMute(!m_bMicMute, NULL);
+    hr = pEndpointVolume->SetMute(m_bMicMute, NULL);
     if (FAILED(hr)) {
         std::cerr << "마이크 음소거 설정 실패" << std::endl;
+        m_bMicMute = !m_bMicMute;   // 롤백
     }
     else {
-        std::cout << "마이크 " << (!m_bMicMute ? "음소거됨" : "음소거 해제됨") << std::endl;
-        m_bMicMute = !m_bMicMute;
+        std::cout << "마이크 " << (m_bMicMute ? "음소거됨" : "음소거 해제됨") << std::endl;
+        if (m_bMicMute) {
+            SetLayeredWindowAttributes(hWnd, 0, 100, LWA_ALPHA);
+        }
+        else {
+            SetLayeredWindowAttributes(hWnd, 0, 255, LWA_ALPHA);
+        }
     }
 }
 
-bool CMIC::execute()
+bool CMIC::execute(const HWND& hWnd)
 {
-    MuteMicrophone();
+    MuteMicrophone(hWnd);
     return true;
 }
