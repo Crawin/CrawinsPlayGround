@@ -19,3 +19,4 @@
 #include <stack>
 #include <vector>
 #include <list>
+#include <map>

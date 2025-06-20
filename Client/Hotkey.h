@@ -12,7 +12,7 @@ private:
 public:
 	CHotKey();
 	virtual ~CHotKey();
-	virtual bool execute() = 0;
+	virtual bool execute(const HWND& hWnd) = 0;
 };
 
 class CMIC : public CHotKey
@@ -26,6 +26,13 @@ private:
 public:
 	CMIC();
 	virtual ~CMIC();
-	void MuteMicrophone();
-	virtual bool execute() override;
+	void MuteMicrophone(const HWND& hWnd);
+	virtual bool execute(const HWND& hWnd) override;
+};
+
+struct HotKeyData
+{
+	int HotKeyInput;
+	unsigned int InputModifier;
+	CHotKey* HotKeyFunc;
 };

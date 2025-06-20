@@ -11,25 +11,23 @@ CSubWindows::~CSubWindows()
 {
 }
 
-ATOM CSubWindows::RegisterSubWindowClass()
-{
-	std::cout << "서브 윈도우 기본생성자 오류\n";
-	return ATOM();
-}
-
 LRESULT CALLBACK CSubWindows::StaticWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     CSubWindows* pThis;
 
-    if (message == WM_NCCREATE) {
+    switch (message) {
+    case WM_NCCREATE:
+    {
         // CreateWindow에서 넘긴 this를 받아서 저장
         CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
         pThis = static_cast<CSubWindows*>(pCreate->lpCreateParams);
         SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
     }
-    else {
+        break;
+    default:
         // 생성 이후에 다른 행위가 감지되면 저장된 this 불러오기
         pThis = reinterpret_cast<CSubWindows*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+        break;
     }
 
     if (pThis) {
@@ -39,32 +37,27 @@ LRESULT CALLBACK CSubWindows::StaticWndProc(HWND hWnd, UINT message, WPARAM wPar
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-bool CSubWindows::CreateSubWindow()
+void CSubWindows::ReleaseSubWindow()
 {
-    return false;
+    DestroyWindow(m_hWnd);
 }
 
-BOOL CSubWindows::InitInstance()
-{
-    return 0;
-}
-
-CHotkeyWindow::CHotkeyWindow(HINSTANCE& hInstance)
+CStreamDeckWindow::CStreamDeckWindow(HINSTANCE& hInstance)
 {
     hInst = hInstance;
     wcscpy_s(szTitle, L"HotkeyWindow");
     wcscpy_s(szWindowClass, L"HotkeyWindowClass");
 }
 
-CHotkeyWindow::~CHotkeyWindow()
+CStreamDeckWindow::~CStreamDeckWindow()
 {
-    for (int i = 0; i < m_vIDHotkeys.size(); ++i) {
-        UnregisterHotKey(m_hWnd, i);
+    for (const auto& [id, hotkeydata] : m_mHotkeys) {
+        UnregisterHotKey(m_hWnd, id);
+        delete hotkeydata.HotKeyFunc;
     }
-
 }
 
-ATOM CHotkeyWindow::RegisterSubWindowClass()
+ATOM CStreamDeckWindow::RegisterSubWindowClass()
 {
     WNDCLASSEXW wcex;
 
@@ -85,11 +78,12 @@ ATOM CHotkeyWindow::RegisterSubWindowClass()
     return RegisterClassExW(&wcex);
 }
 
-LRESULT CHotkeyWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CStreamDeckWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
-    case WM_DESTROY:
-        PostQuitMessage(0);
+    case WM_NCDESTROY:  // 윈도우 삭제시 메모리 해제
+        delete this;
+        return 0;
         break;
     case WM_KEYDOWN:
         if (wParam == VK_RETURN) {
@@ -97,13 +91,12 @@ LRESULT CHotkeyWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
         }
         break;
     case WM_HOTKEY:// 핫키에 등록된 키보드 입력시, 핫키가 register되어있는 윈도우에 이벤트 전송
-        switch (m_vIDHotkeys[wParam]) {
-        case VK_PAUSE:
-            std::cout << "마이크 음소거\n";
-            // need modify => 기능들을 id로 묶고, 이를 execute하는 형식으로 수정필요
-            m_lptrHotkeys.front()->execute();
-            break;
+    {
+        auto it = m_mHotkeys.find(static_cast<int>(wParam));
+        if (it != m_mHotkeys.end()) {   // 등록된 id이면 실행
+            it->second.HotKeyFunc->execute(hWnd);
         }
+    }
         break;
     case WM_LBUTTONDOWN:    // 창 위치 이동
         ReleaseCapture();
@@ -115,15 +108,16 @@ LRESULT CHotkeyWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
     return 0;
 }
 
-bool CHotkeyWindow::CreateSubWindow()
+bool CStreamDeckWindow::CreateSubWindow()
 {
     RegisterSubWindowClass();
     InitInstance();
-    m_lptrHotkeys.emplace_back(new CMIC());
+    DefineHotKeys();
+    RegisterHotKeys();
     return true;
 }
 
-BOOL CHotkeyWindow::InitInstance()
+BOOL CStreamDeckWindow::InitInstance()
 {
     HWND hWnd = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_LAYERED, // 확장 스타일 (필요시)
@@ -141,28 +135,25 @@ BOOL CHotkeyWindow::InitInstance()
         return FALSE;
     }
     m_hWnd = hWnd;
-    SetLayeredWindowAttributes(m_hWnd, 0, 100, LWA_ALPHA);
+    SetLayeredWindowAttributes(m_hWnd, 0, 255, LWA_ALPHA);
 
-    DefineHotKeys();
-    RegisterHotKeys();
-
-    SetFocus(m_hWnd);
     ShowWindow(m_hWnd, 1);
     UpdateWindow(m_hWnd);
 
     return TRUE;
 }
 
-bool CHotkeyWindow::RegisterHotKeys()
+bool CStreamDeckWindow::RegisterHotKeys()
 {
-    for (int i = 0; i < m_vIDHotkeys.size(); ++i) {
-        RegisterHotKey(m_hWnd, i, 0, m_vIDHotkeys[i]);
+    for (const auto& [id, hotkeydata] : m_mHotkeys) {
+        RegisterHotKey(m_hWnd, id, hotkeydata.InputModifier, hotkeydata.HotKeyInput);
     }
     return true;
 }
 
-bool CHotkeyWindow::DefineHotKeys()
+bool CStreamDeckWindow::DefineHotKeys()
 {
-    m_vIDHotkeys.emplace_back(VK_PAUSE);
+    /*JSON파일 읽어서 키보드 인풋 값을 불러온 후 m_mHotkeys에 삽입*/
+    m_mHotkeys.try_emplace(m_currentID++, VK_PAUSE, 0, new CMIC);
     return true;
 }

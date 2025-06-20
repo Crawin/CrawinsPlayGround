@@ -13,20 +13,22 @@ public:
 	CSubWindows();
 	virtual ~CSubWindows();
 
-	virtual ATOM RegisterSubWindowClass();
+	virtual ATOM RegisterSubWindowClass() = 0;
 	static LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) = 0;
-	virtual bool CreateSubWindow();
-	virtual BOOL InitInstance();
+	virtual bool CreateSubWindow() = 0;
+	virtual BOOL InitInstance() = 0;
+	void ReleaseSubWindow();
 };
 
-class CHotkeyWindow : public CSubWindows {
+class CStreamDeckWindow : public CSubWindows {
 private:
-	std::vector<int> m_vIDHotkeys;
-	std::list<CHotKey*> m_lptrHotkeys;
+	typedef int ID;
+	ID m_currentID = 0;
+	std::map<ID, HotKeyData> m_mHotkeys;
 public:
-	CHotkeyWindow(HINSTANCE& hInstance);
-	virtual ~CHotkeyWindow();
+	CStreamDeckWindow(HINSTANCE& hInstance);
+	virtual ~CStreamDeckWindow();
 	virtual ATOM RegisterSubWindowClass() override;
 	virtual LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
 	virtual bool CreateSubWindow() override;
