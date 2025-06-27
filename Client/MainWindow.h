@@ -1,4 +1,6 @@
 #pragma once
+#include "Timer.h"
+
 class CSubWindows;
 
 class CMainWindow
@@ -42,6 +44,9 @@ private:
 
 private:
 	std::stack<CSubWindows*> m_sptrSubWindows;
+private:
+	CGameTimer m_GameTimer;
+	_TCHAR m_pszFrameRate[50];
 public:
 	CMainWindow();
 	~CMainWindow();
@@ -69,5 +74,4 @@ public:
 	void OnProcessingMouseMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
 	void OnProcessingKeyboardMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
 	LRESULT CALLBACK OnProcessingWindowMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
-
 };

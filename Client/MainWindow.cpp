@@ -24,6 +24,7 @@ CMainWindow::CMainWindow()
 	m_nFenceValue = 0;
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
+	ZeroMemory(m_pszFrameRate, sizeof(m_pszFrameRate));
 }
 
 CMainWindow::~CMainWindow()
@@ -232,10 +233,10 @@ void CMainWindow::CreateCommandQueueAndList()
 	//직접(Direct) 명령 할당자를 생성한다.
 	
 	hResult = m_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pd3dCommandAllocator, NULL, __uuidof(ID3D12GraphicsCommandList), (void**)&m_pd3dCommandList);
-		//직접(Direct) 명령 리스트를 생성한다. 
+	//직접(Direct) 명령 리스트를 생성한다. 
 	
 	hResult = m_pd3dCommandList->Close();
-		//명령 리스트는 생성되면 열린(Open) 상태이므로 닫힌(Closed) 상태로 만든다.
+	//명령 리스트는 생성되면 열린(Open) 상태이므로 닫힌(Closed) 상태로 만든다.
 }
 
 void CMainWindow::CreateRenderTargetViews()
@@ -304,6 +305,8 @@ void CMainWindow::AnimateObjects()
 
 void CMainWindow::FrameAdvance()
 {
+	m_GameTimer.Tick();
+
 	ProcessInput();
 	AnimateObjects();
 
@@ -362,15 +365,13 @@ void CMainWindow::FrameAdvance()
 	WaitForGpuComplete();
 	//GPU가 모든 명령 리스트를 실행할 때 까지 기다린다.
 
-	DXGI_PRESENT_PARAMETERS dxgiPresentParameters;
-	dxgiPresentParameters.DirtyRectsCount = 0;
-	dxgiPresentParameters.pDirtyRects = NULL;
-	dxgiPresentParameters.pScrollRect = NULL;
-	dxgiPresentParameters.pScrollOffset = NULL;
-	m_pdxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
+	m_pdxgiSwapChain->Present(0, 0);
 	/*스왑체인을 프리젠트한다. 프리젠트를 하면 현재 렌더 타겟(후면버퍼)의 내용이 전면버퍼로 옮겨지고 렌더 타겟 인
 	덱스가 바뀔 것이다.*/
 	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
+
+	m_GameTimer.GetFrameRate(m_pszFrameRate, 37);
+	SetWindowText(m_hWnd, m_pszFrameRate);
 }
 
 void CMainWindow::WaitForGpuComplete()
