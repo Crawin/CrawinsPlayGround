@@ -1,10 +1,16 @@
 ﻿#include "stdafx.h"
 #include "Resource.h"
-#include "Hotkey.h"
 #include "SubWindows.h"
 
 CSubWindows::CSubWindows()
 {
+    hInst = nullptr;
+    m_hWnd = nullptr;
+    m_iX = m_iY = 0;
+    m_iWidth = FRAME_BUFFER_WIDTH;
+    m_iHeight = FRAME_BUFFER_HEIGHT;
+    ZeroMemory(szWindowClass, sizeof(szWindowClass));
+    ZeroMemory(szTitle, sizeof(szTitle));
 }
 
 CSubWindows::~CSubWindows()
@@ -42,11 +48,22 @@ void CSubWindows::ReleaseSubWindow()
     DestroyWindow(m_hWnd);
 }
 
-CStreamDeckWindow::CStreamDeckWindow(HINSTANCE& hInstance)
+CStreamDeckWindow::CStreamDeckWindow(const HINSTANCE& hInstance)
 {
     hInst = hInstance;
     wcscpy_s(szTitle, L"HotkeyWindow");
     wcscpy_s(szWindowClass, L"HotkeyWindowClass");
+}
+
+CStreamDeckWindow::CStreamDeckWindow(const HINSTANCE& hInstance, const int& X, const int& Y, const int& nWidth, const int& nHeight)
+{
+    hInst = hInstance;
+    wcscpy_s(szTitle, L"HotkeyWindow");
+    wcscpy_s(szWindowClass, L"HotkeyWindowClass");
+    m_iX = X;
+    m_iY = Y;
+    m_iWidth = nWidth;
+    m_iHeight = nHeight;
 }
 
 CStreamDeckWindow::~CStreamDeckWindow()
@@ -124,7 +141,7 @@ BOOL CStreamDeckWindow::InitInstance()
         szWindowClass,       // 등록된 윈도우 클래스
         szTitle,                     // 창 제목 없음
         WS_POPUP,                // ★ 테두리, 캡션 없는 스타일
-        100, 100, 300, 200,      // 위치와 크기
+        m_iX, m_iY, m_iWidth, m_iHeight,      // 위치와 크기
         NULL, NULL, hInst, this);   // lParam 에 this를 넣어서 wndProc 클래스별 할당
     if (!hWnd)
     {

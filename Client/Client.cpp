@@ -1,11 +1,10 @@
 ﻿// Client.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
 
-#include "Hotkey.h"
 #include "stdafx.h"
-#include "Client.h"
 #include "BoostClient.h"
-#include "SubWindows.h"
+#include "MainWindow.h"
+#include "Client.h"
 
 #define MAX_LOADSTRING 100
 
@@ -21,7 +20,7 @@
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
-std::stack<CSubWindows*> g_sptrSubWindows;
+CMainWindow g_MainWindow;
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -34,15 +33,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: 여기에 코드를 입력합니다.
-
     // 전역 문자열을 초기화합니다.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_CLIENT, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // 애플리케이션 초기화를 수행합니다:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
@@ -52,14 +49,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     MSG msg;
 
     // 기본 메시지 루프입니다:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (1)
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            if (msg.message == WM_QUIT) break;
+            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+        else
+        {
+            g_MainWindow.FrameAdvance();
         }
     }
+    g_MainWindow.OnDestroy();
 
     return (int) msg.wParam;
 }
@@ -85,7 +91,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_CLIENT));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = /*MAKEINTRESOURCEW(IDC_CLIENT)*/nullptr;
+    wcex.lpszMenuName = NULL;
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -108,15 +114,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    HWND hWndMonitor = nullptr;
    HMONITOR hMonitior = MonitorFromWindow(hWndMonitor, MONITOR_DEFAULTTONEAREST);
+   if (!hMonitior)
+       return FALSE;
    MONITORINFO mi = {};
    mi.cbSize = sizeof(MONITORINFO);
    GetMonitorInfo(hMonitior, &mi);
 
    int monitorWidth = mi.rcMonitor.right - mi.rcMonitor.left;
    int monitorHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
-
-   int monitorCenterX = mi.rcMonitor.left + monitorWidth / 2;
-   int monitorCenterY = mi.rcMonitor.top + monitorHeight / 2;
 
    RECT rc = { 0,0,monitorWidth / 2,monitorHeight / 2 };
    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, false);
@@ -131,9 +136,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        MessageBox(NULL, msg, L"Error", MB_OK | MB_ICONERROR);
       return FALSE;
    }
-
-   //SetLayeredWindowAttributes(hWnd, 0, 100, LWA_ALPHA);
-
+   g_MainWindow.OnCreate(hInstance, hWnd);
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -155,53 +158,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // 메뉴 선택을 구문 분석합니다:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
-            EndPaint(hWnd, &ps);
-        }
+    case WM_SIZE:
+    case WM_QUIT:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+    case WM_MOUSEMOVE:
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+        g_MainWindow.OnProcessingWindowMessage(hWnd, hInst, message, wParam, lParam);
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
-        break;
-    case WM_KEYDOWN:
-        switch (wParam) {
-        case VK_PAUSE:
-            break;
-        case VK_RETURN:
-        {
-            CStreamDeckWindow* StreamDeckPopup = new CStreamDeckWindow(hInst);
-            StreamDeckPopup->CreateSubWindow();
-            g_sptrSubWindows.emplace(StreamDeckPopup);
-        }
-            break;
-        case VK_ESCAPE:
-            if (g_sptrSubWindows.size()) {
-                auto subwindow = g_sptrSubWindows.top();
-                g_sptrSubWindows.pop();
-                subwindow->ReleaseSubWindow();
-            }
-            break;
-        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);

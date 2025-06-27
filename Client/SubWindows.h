@@ -1,5 +1,5 @@
 ﻿#pragma once
-
+#include "Hotkey.h"
 #define MAX_LOADSTRING 100
 
 class CSubWindows
@@ -9,6 +9,7 @@ protected:
 	WCHAR szTitle[MAX_LOADSTRING];
 	HINSTANCE hInst;
 	HWND m_hWnd;
+	int m_iX, m_iY, m_iWidth, m_iHeight;
 public:
 	CSubWindows();
 	virtual ~CSubWindows();
@@ -27,7 +28,9 @@ private:
 	ID m_currentID = 0;
 	std::map<ID, HotKeyData> m_mHotkeys;
 public:
-	CStreamDeckWindow(HINSTANCE& hInstance);
+	CStreamDeckWindow(const HINSTANCE& hInstance);
+	CStreamDeckWindow(const HINSTANCE& hInstance, const int& X, const int& Y, const int& nWidth, const int& nHeight);
+
 	virtual ~CStreamDeckWindow();
 	virtual ATOM RegisterSubWindowClass() override;
 	virtual LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
