@@ -124,6 +124,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    int monitorHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
 
    RECT rc = { 0,0,monitorWidth / 2,monitorHeight / 2 };
+
    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, false);
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
        monitorWidth / 4, monitorHeight / 4, rc.right-rc.left, rc.bottom-rc.top, nullptr, nullptr, hInstance, nullptr);
@@ -139,6 +140,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    g_MainWindow.OnCreate(hInstance, hWnd);
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
+
+#ifdef _WITH_SWAPCHAIN_FULLSCREEN_STATE
+   g_MainWindow.ChangeSwapChainState();
+#endif
 
    //start();
    return TRUE;

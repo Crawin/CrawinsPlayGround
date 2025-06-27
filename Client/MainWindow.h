@@ -74,4 +74,6 @@ public:
 	void OnProcessingMouseMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
 	void OnProcessingKeyboardMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
 	LRESULT CALLBACK OnProcessingWindowMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
+
+	void ChangeSwapChainState();
 };

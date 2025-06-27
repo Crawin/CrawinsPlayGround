@@ -45,3 +45,5 @@ using Microsoft::WRL::ComPtr;
 
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
+
+//#define _WITH_SWAPCHAIN_FULLSCREEN_STATE
