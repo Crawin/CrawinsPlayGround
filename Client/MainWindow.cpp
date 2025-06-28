@@ -97,23 +97,30 @@ void CMainWindow::CreateSwapChain()
 	m_nWndClientWidth = rcClient.right - rcClient.left;
 	m_nWndClientHeight = rcClient.bottom - rcClient.top;
 
-	DXGI_SWAP_CHAIN_DESC dxgiSwapChainDesc;
-	ZeroMemory(&dxgiSwapChainDesc, sizeof(dxgiSwapChainDesc));
-	dxgiSwapChainDesc.BufferCount = m_nSwapChainBuffers;
-	dxgiSwapChainDesc.BufferDesc.Width = m_nWndClientWidth;
-	dxgiSwapChainDesc.BufferDesc.Height = m_nWndClientHeight;
-	dxgiSwapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	dxgiSwapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-	dxgiSwapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-	dxgiSwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	dxgiSwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	dxgiSwapChainDesc.OutputWindow = m_hWnd;
-	dxgiSwapChainDesc.SampleDesc.Count = (m_bMsaa4xEnable) ? 4 : 1;
-	dxgiSwapChainDesc.SampleDesc.Quality = (m_bMsaa4xEnable) ? (m_nMsaa4xQualityLevels - 1) : 0;
-	dxgiSwapChainDesc.Windowed = TRUE;
-	dxgiSwapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1;
+	ZeroMemory(&dxgiSwapChainDesc1, sizeof(dxgiSwapChainDesc1));
+	dxgiSwapChainDesc1.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+	dxgiSwapChainDesc1.BufferCount = m_nSwapChainBuffers;
+	dxgiSwapChainDesc1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	dxgiSwapChainDesc1.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+	dxgiSwapChainDesc1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	dxgiSwapChainDesc1.Height = m_nWndClientHeight;
+	dxgiSwapChainDesc1.SampleDesc.Count = (m_bMsaa4xEnable) ? 4 : 1;
+	dxgiSwapChainDesc1.SampleDesc.Quality = (m_bMsaa4xEnable) ? (m_nMsaa4xQualityLevels - 1) : 0;
+	dxgiSwapChainDesc1.Scaling = DXGI_SCALING_NONE;
+	dxgiSwapChainDesc1.Stereo = FALSE;
+	dxgiSwapChainDesc1.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	dxgiSwapChainDesc1.Width = m_nWndClientWidth;
 
-	HRESULT hResult = m_pdxgiFactory->CreateSwapChain(m_pd3dCommandQueue, &dxgiSwapChainDesc, (IDXGISwapChain**)&m_pdxgiSwapChain);
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC dxgiSwapChainFullDesc;
+	ZeroMemory(&dxgiSwapChainFullDesc, sizeof(dxgiSwapChainFullDesc));
+	dxgiSwapChainFullDesc.RefreshRate.Numerator = 0;
+	dxgiSwapChainFullDesc.RefreshRate.Denominator = 0;
+	dxgiSwapChainFullDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	dxgiSwapChainFullDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	dxgiSwapChainFullDesc.Windowed = TRUE;
+
+	HRESULT hResult = m_pdxgiFactory->CreateSwapChainForHwnd(m_pd3dCommandQueue, m_hWnd, &dxgiSwapChainDesc1, &dxgiSwapChainFullDesc, NULL, (IDXGISwapChain1**)&m_pdxgiSwapChain);
 	hResult = m_pdxgiFactory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
 	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 }
@@ -134,8 +141,7 @@ void CMainWindow::CreateRtvAndDsvDescriptorHeaps()
 	
 	d3dDescriptorHeapDesc.NumDescriptors = 1;
 	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	hResult = m_pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc,
-		__uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dDsvDescriptorHeap);
+	hResult = m_pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dDsvDescriptorHeap);
 	//깊이-스텐실 서술자 힙(서술자의 개수는 1)을 생성한다. 
 	
 	m_nDsvDescriptorIncrementSize = m_pd3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -325,7 +331,7 @@ void CMainWindow::FrameAdvance()
 	//현재의 렌더 타겟에 해당하는 서술자의 CPU 주소(핸들)를 계산한다.
 
 	float pfClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f };
-	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, /*pfClearColor*/Colors::White, 0, NULL);
+	m_pd3dCommandList->ClearRenderTargetView(d3dRtvCPUDescriptorHandle, pfClearColor/*Colors::White*/, 0, NULL);
 	//원하는 색상으로 렌더 타겟(뷰)을 지운다.
 
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -355,7 +361,13 @@ void CMainWindow::FrameAdvance()
 	WaitForGpuComplete();
 	//GPU가 모든 명령 리스트를 실행할 때 까지 기다린다.
 
-	m_pdxgiSwapChain->Present(0, 0);
+	BOOL b_fullscreen;
+	m_pdxgiSwapChain->GetFullscreenState(&b_fullscreen, NULL);
+	UINT presentFlags = 0;
+	if (!b_fullscreen)
+		presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+	m_pdxgiSwapChain->Present(0, presentFlags);
+	// 티어링을 허가하면 프레임이 올라간다
 	/*스왑체인을 프리젠트한다. 프리젠트를 하면 현재 렌더 타겟(후면버퍼)의 내용이 전면버퍼로 옮겨지고 렌더 타겟 인
 	덱스가 바뀔 것이다.*/
 	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
@@ -477,19 +489,23 @@ void CMainWindow::ChangeSwapChainState()
 	dxgiTargetParameters.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	dxgiTargetParameters.Width = m_nWndClientWidth;
 	dxgiTargetParameters.Height = m_nWndClientHeight;
-	dxgiTargetParameters.RefreshRate.Numerator = 60;
-	dxgiTargetParameters.RefreshRate.Denominator = 1;
+	dxgiTargetParameters.RefreshRate.Numerator = 0;
+	dxgiTargetParameters.RefreshRate.Denominator = 0;
 	dxgiTargetParameters.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 	dxgiTargetParameters.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	m_pdxgiSwapChain->ResizeTarget(&dxgiTargetParameters);
 
-	for (int i = 0; i < m_nSwapChainBuffers; i++)
+	for (int i = 0; i < m_nSwapChainBuffers; i++) {
 		if (m_ppd3dRenderTargetBuffers[i])
 			m_ppd3dRenderTargetBuffers[i]->Release();
+	}
+	if (m_pd3dDepthStencilBuffer)
+		m_pd3dDepthStencilBuffer->Release();
 
-	DXGI_SWAP_CHAIN_DESC dxgiSwapChainDesc;
-	m_pdxgiSwapChain->GetDesc(&dxgiSwapChainDesc);
-	m_pdxgiSwapChain->ResizeBuffers(m_nSwapChainBuffers, m_nWndClientWidth,m_nWndClientHeight, dxgiSwapChainDesc.BufferDesc.Format, dxgiSwapChainDesc.Flags);
+	DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1;
+	m_pdxgiSwapChain->GetDesc1(&dxgiSwapChainDesc1);
+	m_pdxgiSwapChain->ResizeBuffers(m_nSwapChainBuffers, m_nWndClientWidth, m_nWndClientHeight, dxgiSwapChainDesc1.Format, dxgiSwapChainDesc1.Flags);
 	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 	CreateRenderTargetViews();
+	CreateDepthStencilView();
 }
