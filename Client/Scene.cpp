@@ -4,7 +4,7 @@
 #include "Camera.h"
 #include "Scene.h"
 
-CScene::CScene() : m_nWndClientWidth(FRAME_BUFFER_WIDTH), m_nWndClientHeight(FRAME_BUFFER_HEIGHT)
+CScene::CScene()
 {
 }
 
@@ -28,16 +28,10 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	//그래픽 루트 시그너쳐를 생성한다. 
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
-	m_pCamera = new CCamera;
-	m_pCamera->SetViewport(0, 0, m_nWndClientWidth, m_nWndClientHeight, 0.0f, 1.0f);
-	m_pCamera->SetScissorRect(0, 0, m_nWndClientWidth, m_nWndClientHeight);
-	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(m_nWndClientWidth) / float(m_nWndClientHeight), 90.0f);
-	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
-
 	//씬을 그리기 위한 셰이더 객체를 생성한다. 
 	m_nShaders = 1;
 	m_ppShaders = new CShader * [m_nShaders];
-	CShader* pShader = new CShader();
+	CDiffusedShader* pShader = new CDiffusedShader();
 	pShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	pShader->BuildObjects(pd3dDevice, pd3dCommandList, NULL);
 	m_ppShaders[0] = pShader;
@@ -71,11 +65,15 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	}
 }
 
-void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList)
+void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, const float& fTimeElapsed)
 {
 	//그래픽 루트 시그너쳐를 파이프라인에 연결(설정)한다. 
-
 	pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+
+	m_pCamera->SetViewportsAndScissorRects(pd3dCommandList);
+	m_pCamera->UpdateShaderVariables(pd3dCommandList);
+	
+	AnimateObjects(fTimeElapsed);
 	//씬을 렌더링하는 것은 씬을 구성하는 셰이더(셰이더가 포함하는 객체)들을 렌더링하는 것이다. 
 	for (int i = 0; i < m_nShaders; i++)
 	{
@@ -95,15 +93,34 @@ void CScene::ReleaseUploadBuffers()
 ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
 {
 	ID3D12RootSignature* pd3dGraphicsRootSignature = NULL;
-	//매개변수가 없는 루트 시그너쳐를 생성한다.
+
+	D3D12_ROOT_PARAMETER pd3dRootParameters[2];
+	pd3dRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	pd3dRootParameters[0].Constants.Num32BitValues = 16;
+	pd3dRootParameters[0].Constants.RegisterSpace = 0;
+	pd3dRootParameters[0].Constants.ShaderRegister = 0;
+	pd3dRootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	pd3dRootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	pd3dRootParameters[1].Constants.Num32BitValues = 32;
+	pd3dRootParameters[1].Constants.RegisterSpace = 0;
+	pd3dRootParameters[1].Constants.ShaderRegister = 1;
+	pd3dRootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	D3D12_ROOT_SIGNATURE_FLAGS d3dRootSignatureFlags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	D3D12_ROOT_SIGNATURE_DESC d3dRootSignatureDesc;
 	::ZeroMemory(&d3dRootSignatureDesc, sizeof(D3D12_ROOT_SIGNATURE_DESC));
-	d3dRootSignatureDesc.NumParameters = 0;
-	d3dRootSignatureDesc.pParameters = NULL;
+	d3dRootSignatureDesc.NumParameters = _countof(pd3dRootParameters);
+	d3dRootSignatureDesc.pParameters = pd3dRootParameters;
 	d3dRootSignatureDesc.NumStaticSamplers = 0;
 	d3dRootSignatureDesc.pStaticSamplers = NULL;
-	d3dRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	d3dRootSignatureDesc.Flags = d3dRootSignatureFlags;
 
 	ID3DBlob* pd3dSignatureBlob = NULL;
 	ID3DBlob* pd3dErrorBlob = NULL;
@@ -117,4 +134,15 @@ ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevic
 ID3D12RootSignature* CScene::GetGraphicsRootSignature()
 {
 	return(m_pd3dGraphicsRootSignature);
+}
+
+void CScene::SetCamera(const int& ViewPortWidth, const int& ViewPortHeight)
+{
+	if (!m_pCamera)
+		m_pCamera = new CCamera;
+
+	m_pCamera->SetViewport(0, 0, ViewPortWidth, ViewPortHeight, 0.0f, 1.0f);
+	m_pCamera->SetScissorRect(0, 0, ViewPortWidth, ViewPortHeight);
+	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(ViewPortWidth) / float(ViewPortHeight), 90.0f);
+	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
 }
