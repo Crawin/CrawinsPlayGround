@@ -227,3 +227,5 @@ namespace Matrix4x4
 		return(xmmtx4x4Result);
 	}
 }
+
+#define RANDOM_COLOR XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))

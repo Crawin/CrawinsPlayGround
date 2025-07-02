@@ -161,11 +161,13 @@ void CShader::ReleaseUploadBuffers()
 
 void CShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
 {
-	CTriangleMesh* pTriangleMesh = new CTriangleMesh(pd3dDevice, pd3dCommandList);
+	CMesh* pMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 12, 12, 12);
+	//CMesh* pMesh = new CTriangleMesh(pd3dDevice, pd3dCommandList);
+
 	m_nObjects = 1;
 	m_ppObjects = new CObject * [m_nObjects];
 	m_ppObjects[0] = new CRotatingObject();
-	m_ppObjects[0]->SetMesh(pTriangleMesh);
+	m_ppObjects[0]->SetMesh(pMesh);
 }
 
 void CShader::AnimateObjects(float fTimeElapsed)
