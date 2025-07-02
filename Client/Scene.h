@@ -15,7 +15,7 @@ public:
 	void ReleaseObjects();
 	bool ProcessInput();
 	void AnimateObjects(float fTimeElapsed);
-	void Render(ID3D12GraphicsCommandList* pd3dCommandList, const float& fTimeElapsed);
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 
 	void ReleaseUploadBuffers();
 

@@ -65,7 +65,7 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	}
 }
 
-void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, const float& fTimeElapsed)
+void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	//그래픽 루트 시그너쳐를 파이프라인에 연결(설정)한다. 
 	pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
@@ -73,7 +73,6 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, const float& fTi
 	m_pCamera->SetViewportsAndScissorRects(pd3dCommandList);
 	m_pCamera->UpdateShaderVariables(pd3dCommandList);
 	
-	AnimateObjects(fTimeElapsed);
 	//씬을 렌더링하는 것은 씬을 구성하는 셰이더(셰이더가 포함하는 객체)들을 렌더링하는 것이다. 
 	for (int i = 0; i < m_nShaders; i++)
 	{
@@ -144,5 +143,5 @@ void CScene::SetCamera(const int& ViewPortWidth, const int& ViewPortHeight)
 	m_pCamera->SetViewport(0, 0, ViewPortWidth, ViewPortHeight, 0.0f, 1.0f);
 	m_pCamera->SetScissorRect(0, 0, ViewPortWidth, ViewPortHeight);
 	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(ViewPortWidth) / float(ViewPortHeight), 90.0f);
-	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
+	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 15.0f, -25.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
 }
