@@ -1,5 +1,6 @@
 #pragma once
 #include "Timer.h"
+#include "Scene.h"
 
 class CSubWindows;
 
@@ -36,7 +37,7 @@ private:
 	ID3D12PipelineState* m_pd3dPipelineState;
 
 	ID3D12Fence* m_pd3dFence;
-	UINT64 m_nFenceValue;
+	UINT64 m_nFenceValues[m_nSwapChainBuffers];
 	HANDLE m_hFenceEvent;
 
 	D3D12_VIEWPORT m_d3dViewport;
@@ -47,6 +48,7 @@ private:
 private:
 	CGameTimer m_GameTimer;
 	_TCHAR m_pszFrameRate[50];
+	CScene* m_pScene;
 public:
 	CMainWindow();
 	~CMainWindow();
@@ -76,4 +78,6 @@ public:
 	LRESULT CALLBACK OnProcessingWindowMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
 
 	void ChangeSwapChainState();
+
+	void MoveToNextFrame();
 };
