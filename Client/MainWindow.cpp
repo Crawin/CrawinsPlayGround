@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "SubWindows.h"
 #include "MainWindow.h"
 
@@ -23,7 +23,7 @@ CMainWindow::CMainWindow()
 	m_nSwapChainBufferIndex = 0;
 	m_hFenceEvent = NULL;
 	m_pd3dFence = NULL;
-	
+
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
 	ZeroMemory(m_pszFrameRate, sizeof(m_pszFrameRate));
@@ -37,6 +37,11 @@ bool CMainWindow::OnCreate(const HINSTANCE& hInstance, const HWND& hMainWnd)
 {
 	m_hInstance = hInstance;
 	m_hWnd = hMainWnd;
+
+	RECT rcClient;
+	GetClientRect(m_hWnd, &rcClient);
+	m_nWndClientWidth = rcClient.right - rcClient.left;
+	m_nWndClientHeight = rcClient.bottom - rcClient.top;
 
 	CreateDirect3DDevice();
 	CreateCommandQueueAndList();
@@ -94,10 +99,10 @@ void CMainWindow::OnDestroy()
 
 void CMainWindow::CreateSwapChain()
 {
-	RECT rcClient;
-	GetClientRect(m_hWnd, &rcClient);
-	m_nWndClientWidth = rcClient.right - rcClient.left;
-	m_nWndClientHeight = rcClient.bottom - rcClient.top;
+	//RECT rcClient;
+	//GetClientRect(m_hWnd, &rcClient);
+	//m_nWndClientWidth = rcClient.right - rcClient.left;
+	//m_nWndClientHeight = rcClient.bottom - rcClient.top;
 
 	DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1;
 	ZeroMemory(&dxgiSwapChainDesc1, sizeof(dxgiSwapChainDesc1));
@@ -285,9 +290,22 @@ void CMainWindow::CreateDepthStencilView()
 
 void CMainWindow::BuildObjects()
 {
-	m_pScene = new CScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice);
+	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
+	//씬 객체를 생성하고 씬에 포함될 게임 객체들을 생성한다. 
+	m_pScene = new CScene();
+	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+
+	//씬 객체를 생성하기 위하여 필요한 그래픽 명령 리스트들을 명령 큐에 추가한다.
+	m_pd3dCommandList->Close();
+	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
+	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+
+	//그래픽 명령 리스트들이 모두 실행될 때까지 기다린다.
+	WaitForGpuComplete();
+
+	//그래픽 리소스들을 생성하는 과정에 생성된 업로드 버퍼들을 소멸시킨다.
+	if (m_pScene) m_pScene->ReleaseUploadBuffers();
 	m_GameTimer.Reset();
 }
 
