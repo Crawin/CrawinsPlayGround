@@ -1,10 +1,12 @@
 #pragma once
 class CShader;
+class CCamera;
 
 class CScene
 {
 public:
 	CScene();
+	CScene(const int& CameraViewPortWidth, const int& CameraViewPortHeight) : m_nWndClientWidth(CameraViewPortWidth), m_nWndClientHeight(CameraViewPortHeight) {};
 	virtual ~CScene();
 
 	bool OnProcessingMouseMessage(const HWND& hWnd, const HINSTANCE& hInst, const UINT& nMessageID, const WPARAM& wParam, const LPARAM& lParam);
@@ -26,5 +28,13 @@ protected:
 	CShader **m_ppShaders = NULL;
 	int m_nShaders = 0;
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = NULL;
+	CCamera* m_pCamera = NULL;
+
+	int m_nWndClientWidth;
+	int m_nWndClientHeight;
+
+	//씬은 게임 객체들의 집합이다. 게임 객체는 셰이더를 포함한다.
+	CObject **m_ppObjects = NULL;
+	int m_nObjects = 0;
 };
 

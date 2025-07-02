@@ -13,81 +13,129 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\MainWindow">
+      <UniqueIdentifier>{c4b81a72-fcd1-405f-9dd4-b19ab5e8fb7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\MainWindow\Scene">
+      <UniqueIdentifier>{4a9139b9-8ccf-490c-b9f8-170185659161}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\MainWindow\Scene\Shader">
+      <UniqueIdentifier>{7d35a725-bf2c-431f-81b5-49a056b54c9d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\MainWindow\Scene\Shader\Object">
+      <UniqueIdentifier>{f05b7ab8-c99c-4b69-b8f7-fbc1d5d60e27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\MainWindow\Scene\Shader\Object\Mesh">
+      <UniqueIdentifier>{0fd8165f-54a7-47d7-ba98-51b5bac0456a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\SubWindows">
+      <UniqueIdentifier>{1d7a9973-0c1b-418d-a469-2bcecac1559a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow">
+      <UniqueIdentifier>{4907bfd0-ef75-4337-a650-aff409edc82e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\SubWindows">
+      <UniqueIdentifier>{be31f1c6-ec54-4fa9-8217-01eaa5dccb10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow\Scene">
+      <UniqueIdentifier>{e78ffc63-72d9-4abf-bb64-1c0ae1808802}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow\Scene\Shader">
+      <UniqueIdentifier>{1873aa97-950c-4121-8795-33d2c85aa9c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow\Scene\Shader\Object">
+      <UniqueIdentifier>{fa66d709-53b3-4013-b2f5-9a13a6321fa7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow\Scene\Shader\Object\Mesh">
+      <UniqueIdentifier>{c827f569-42a0-4062-aeb6-c4ccf5e9ad3f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\MainWindow\Scene\Camera">
+      <UniqueIdentifier>{48025f1e-ec4c-458b-8bce-d7a2f5e2da29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\MainWindow\Scene\Camera">
+      <UniqueIdentifier>{5befeed7-f9f3-4334-81b1-7e6be15226b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Resource.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Client.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Hotkey.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="BoostClient.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="SubWindows.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\SubWindows</Filter>
+    </ClInclude>
+    <ClInclude Include="Hotkey.h">
+      <Filter>헤더 파일\SubWindows</Filter>
     </ClInclude>
     <ClInclude Include="MainWindow.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\MainWindow</Filter>
+    </ClInclude>
+    <ClInclude Include="Client.h">
+      <Filter>헤더 파일\MainWindow</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>헤더 파일\MainWindow</Filter>
     </ClInclude>
     <ClInclude Include="Timer.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\MainWindow</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>헤더 파일\MainWindow</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\MainWindow\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Shader.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\MainWindow\Scene\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Object.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>헤더 파일\MainWindow\Scene\Shader\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>헤더 파일\MainWindow\Scene\Shader\Object\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>헤더 파일\MainWindow\Scene\Camera</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Client.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Hotkey.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="BoostClient.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="SubWindows.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="MainWindow.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\MainWindow</Filter>
     </ClCompile>
-    <ClCompile Include="Timer.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Client.cpp">
+      <Filter>소스 파일\MainWindow</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\MainWindow\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Shader.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Mesh.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\MainWindow\Scene\Shader</Filter>
     </ClCompile>
     <ClCompile Include="Object.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\MainWindow\Scene\Shader\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>소스 파일\MainWindow\Scene\Shader\Object\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="SubWindows.cpp">
+      <Filter>소스 파일\SubWindows</Filter>
+    </ClCompile>
+    <ClCompile Include="Hotkey.cpp">
+      <Filter>소스 파일\SubWindows</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>소스 파일\MainWindow</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>소스 파일\MainWindow\Scene\Camera</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -1,9 +1,10 @@
 #include "stdafx.h"
 #include "Timer.h"
 #include "Shader.h"
+#include "Camera.h"
 #include "Scene.h"
 
-CScene::CScene()
+CScene::CScene() : m_nWndClientWidth(FRAME_BUFFER_WIDTH), m_nWndClientHeight(FRAME_BUFFER_HEIGHT)
 {
 }
 
@@ -26,6 +27,12 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 {
 	//그래픽 루트 시그너쳐를 생성한다. 
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
+
+	m_pCamera = new CCamera;
+	m_pCamera->SetViewport(0, 0, m_nWndClientWidth, m_nWndClientHeight, 0.0f, 1.0f);
+	m_pCamera->SetScissorRect(0, 0, m_nWndClientWidth, m_nWndClientHeight);
+	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(m_nWndClientWidth) / float(m_nWndClientHeight), 90.0f);
+	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 0.0f, -2.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
 
 	//씬을 그리기 위한 셰이더 객체를 생성한다. 
 	m_nShaders = 1;

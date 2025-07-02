@@ -40,9 +40,6 @@ private:
 	UINT64 m_nFenceValues[m_nSwapChainBuffers];
 	HANDLE m_hFenceEvent;
 
-	D3D12_VIEWPORT m_d3dViewport;
-	D3D12_RECT m_d3dScissorRect;
-
 private:
 	std::stack<CSubWindows*> m_sptrSubWindows;
 private:
