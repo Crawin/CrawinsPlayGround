@@ -31,9 +31,10 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	//씬을 그리기 위한 셰이더 객체를 생성한다. 
 	m_nShaders = 1;
 	m_ppShaders = new CShader * [m_nShaders];
-	CDiffusedShader* pShader = new CDiffusedShader();
+	CShader* pShader = new CInstancingILShader();
+	//CShader* pShader = new CObjectsShader();
 	pShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pShader->BuildObjects(pd3dDevice, pd3dCommandList, NULL);
+	pShader->BuildObjects(pd3dDevice, pd3dCommandList);
 	m_ppShaders[0] = pShader;
 }
 

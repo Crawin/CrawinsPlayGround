@@ -7,6 +7,17 @@ CCamera::CCamera()
 	m_xmf4x4Projection = Matrix4x4::Identity();
 	m_d3dViewport = { 0, 0, FRAME_BUFFER_WIDTH , FRAME_BUFFER_HEIGHT, 0.0f, 1.0f };
 	m_d3dScissorRect = { 0, 0, FRAME_BUFFER_WIDTH , FRAME_BUFFER_HEIGHT };
+	m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	m_xmf3Right = XMFLOAT3(1.0f, 0.0f, 0.0f);
+	m_xmf3Look = XMFLOAT3(0.0f, 0.0f, 1.0f);
+	m_xmf3Up = XMFLOAT3(0.0f, 1.0f, 0.0f);
+	m_fPitch = 0.0f;
+	m_fRoll = 0.0f;
+	m_fYaw = 0.0f;
+	m_xmf3Offset = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	m_fTimeLag = 0.0f;
+	m_xmf3LookAtWorld = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
 }
 
 CCamera::~CCamera()
@@ -36,6 +47,9 @@ void CCamera::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 
 void CCamera::GenerateViewMatrix(XMFLOAT3 xmf3Position, XMFLOAT3 xmf3LookAt, XMFLOAT3 xmf3Up)
 {
+	m_xmf3Position = xmf3Position;
+	m_xmf3LookAtWorld = xmf3LookAt;
+	m_xmf3Up = xmf3Up;
 	m_xmf4x4View = Matrix4x4::LookAtLH(xmf3Position, xmf3LookAt, xmf3Up);
 }
 

@@ -39,3 +39,31 @@ float4 PSDiffused(VS_OUTPUT input) : SV_TARGET
 {
     return (input.color);
 }
+
+//정점 데이터와 인스턴싱 데이터를 위한 구조체이다. 
+struct VS_INSTANCING_INPUT
+{
+    float3 position : POSITION;
+    float4 color : COLOR;
+    float4x4 mtxTransform : WORLDMATRIX;
+    float4 instanceColor : INSTANCECOLOR;
+};
+struct VS_INSTANCING_OUTPUT
+{
+    float4 position : SV_POSITION;
+    float4 color : COLOR;
+};
+
+VS_INSTANCING_OUTPUT VSInstancingIL(VS_INSTANCING_INPUT input)
+{
+    VS_INSTANCING_OUTPUT output;
+    output.position = mul(mul(mul(float4(input.position, 1.0f), input.mtxTransform),
+gmtxView), gmtxProjection);
+    output.color = input.color + input.instanceColor;
+    //output.color = input.color;
+    return (output);
+}
+float4 PSInstancingIL(VS_INSTANCING_OUTPUT input) : SV_TARGET
+{
+    return (input.color);
+}

@@ -307,6 +307,18 @@ void CMainWindow::ReleaseObjects()
 
 void CMainWindow::ProcessInput()
 {
+	static UCHAR pKeyBuffer[256];
+	DWORD dwDirection = 0;
+	if (::GetKeyboardState(pKeyBuffer))
+	{
+		if (pKeyBuffer['W'] & 0xF0);
+		//if (pKeyBuffer[VK_UP] & 0xF0) dwDirection |= DIR_FORWARD;
+		//if (pKeyBuffer[VK_DOWN] & 0xF0) dwDirection |= DIR_BACKWARD;
+		//if (pKeyBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;
+		//if (pKeyBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT;
+		//if (pKeyBuffer[VK_PRIOR] & 0xF0) dwDirection |= DIR_UP;
+		//if (pKeyBuffer[VK_NEXT] & 0xF0) dwDirection |= DIR_DOWN;
+	}
 }
 
 void CMainWindow::AnimateObjects()

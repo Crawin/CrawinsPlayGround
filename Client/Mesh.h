@@ -42,7 +42,7 @@ private:
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
-	void ReleaseUploadBuffers();
+	virtual void ReleaseUploadBuffers();
 protected:
 	ID3D12Resource* m_pd3dVertexBuffer = NULL;
 	ID3D12Resource* m_pd3dVertexUploadBuffer = NULL;
@@ -54,7 +54,6 @@ protected:
 	UINT m_nOffset = 0;
 public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
-
 };
 
 class CTriangleMesh : public CMesh
@@ -69,4 +68,23 @@ class CCubeMeshDiffused : public CMesh
 public:
 	CCubeMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
 	virtual ~CCubeMeshDiffused();
+};
+
+class CCubeMeshDiffusedIndexed : public CMesh
+{
+protected:
+	ID3D12Resource* m_pd3dIndexBuffer = NULL;
+	ID3D12Resource* m_pd3dIndexUploadBuffer = NULL;
+
+	D3D12_INDEX_BUFFER_VIEW m_d3dIndexBufferView;
+
+	UINT m_nIndices = 0;
+	UINT m_nStartIndex = 0;
+	int m_nBaseVertex = 0;
+public:
+	CCubeMeshDiffusedIndexed(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
+	virtual ~CCubeMeshDiffusedIndexed();
+	virtual void ReleaseUploadBuffers();
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nInstances, D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
 };
