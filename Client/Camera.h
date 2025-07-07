@@ -36,6 +36,7 @@ protected:
 	//플레이어가 회전할 때 얼마만큼의 시간을 지연시킨 후 카메라를 회전시킬 것인가를 나타낸다.
 	float m_fTimeLag;
 
+	BoundingFrustum m_xmFrustum;
 public:
 	CCamera();
 	virtual ~CCamera();
@@ -47,5 +48,9 @@ public:
 	void SetViewport(int xTopLeft, int yTopLeft, int nWidth, int nHeight, float fMinZ = 0.0f, float fMaxZ = 1.0f);
 	void SetScissorRect(LONG xLeft, LONG yTop, LONG xRight, LONG yBottom);
 	virtual void SetViewportsAndScissorRects(ID3D12GraphicsCommandList* pd3dCommandList);
+	//절두체(월드 좌표계)를 생성한다. 
+	void GenerateFrustum();
+	//바운딩 박스(OOBB, 월드 좌표계)가 절두체에 포함되는 가를 검사한다. 
+	bool IsInFrustum(BoundingOrientedBox& xmBoundingBox);
 };
 

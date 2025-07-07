@@ -57,8 +57,7 @@ struct VS_INSTANCING_OUTPUT
 VS_INSTANCING_OUTPUT VSInstancingIL(VS_INSTANCING_INPUT input)
 {
     VS_INSTANCING_OUTPUT output;
-    output.position = mul(mul(mul(float4(input.position, 1.0f), input.mtxTransform),
-gmtxView), gmtxProjection);
+    output.position = mul(mul(mul(float4(input.position, 1.0f), input.mtxTransform), gmtxView), gmtxProjection);
     output.color = input.color + input.instanceColor;
     //output.color = input.color;
     return (output);
@@ -67,3 +66,4 @@ float4 PSInstancingIL(VS_INSTANCING_OUTPUT input) : SV_TARGET
 {
     return (input.color);
 }
+

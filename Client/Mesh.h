@@ -43,6 +43,7 @@ public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 	virtual void ReleaseUploadBuffers();
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
 protected:
 	ID3D12Resource* m_pd3dVertexBuffer = NULL;
 	ID3D12Resource* m_pd3dVertexUploadBuffer = NULL;
@@ -52,6 +53,7 @@ protected:
 	UINT m_nVertices = 0;
 	UINT m_nStride = 0;
 	UINT m_nOffset = 0;
+	BoundingOrientedBox m_xmBoundingBox;
 public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 };

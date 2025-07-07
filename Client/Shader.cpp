@@ -208,6 +208,17 @@ void CShader::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 	}
 }
 
+void CShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	OnPrepareRender(pd3dCommandList);
+
+	UpdateShaderVariables(pd3dCommandList);
+	for (int j = 0; j < m_nObjects; j++)
+	{
+		if (m_ppObjects[j]) m_ppObjects[j]->Render(pd3dCommandList);
+	}
+}
+
 CDiffusedShader::CDiffusedShader()
 {
 }
@@ -394,7 +405,7 @@ D3D12_SHADER_BYTECODE CInstancingILShader::CreatePixelShader(ID3DBlob** ppd3dSha
 void CInstancingILShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	//인스턴스 정보를 저장할 정점 버퍼를 업로드 힙 유형으로 생성한다. 
-	m_pd3dcbGameObjects = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, sizeof(VS_VB_INSTANCE)* m_nObjects, 
+	m_pd3dcbGameObjects = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, sizeof(VS_VB_INSTANCE)* m_nMaxObjects,
 		D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
 	//정점 버퍼(업로드 힙)에 대한 포인터를 저장한다.
 	m_pd3dcbGameObjects->Map(0, NULL, (void **)&m_pcbMappedGameObjects);
@@ -422,11 +433,18 @@ void CInstancingILShader::ReleaseShaderVariables()
 void CInstancingILShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	int xObjects = 10, yObjects = 10, zObjects = 10, i = 0;
-	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
+	m_nMaxObjects = m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
 	m_ppObjects = new CObject * [m_nObjects];
+	//float fxPitch = 12.f * 2.5;
+	//float fyPitch = 12.f * 2.5;
+	//float fzPitch = 12.f * 2.5;
+	//CCubeMeshDiffusedIndexed* pCubeMesh = new CCubeMeshDiffusedIndexed(pd3dDevice, pd3dCommandList, 12.0f, 12.0f, 12.0f);
+
 	float fxPitch = 1.f;
 	float fyPitch = 1.f;
 	float fzPitch = 1.f;
+	CCubeMeshDiffusedIndexed* pCubeMesh = new CCubeMeshDiffusedIndexed(pd3dDevice, pd3dCommandList, 1.f, 1.f, 1.f);
+
 	CRotatingObject* pRotatingObject = NULL;
 	for (int x = -xObjects; x <= xObjects; x++)
 	{
@@ -438,13 +456,11 @@ void CInstancingILShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 				pRotatingObject->SetPosition(fxPitch * x, fyPitch * y, fzPitch * z);
 				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
 				pRotatingObject->SetRotationSpeed(10.0f * (i % 10));
-				m_ppObjects[i++] = pRotatingObject;
+				m_ppObjects[i] = pRotatingObject;
+				m_ppObjects[i++]->SetMesh(pCubeMesh);
 			}
 		}
 	}
-	//인스턴싱을 사용하여 렌더링하기 위하여 하나의 게임 객체만 메쉬를 가진다. 
-	CCubeMeshDiffusedIndexed*pCubeMesh = new CCubeMeshDiffusedIndexed(pd3dDevice, pd3dCommandList, 1.0f, 1.0f, 1.0f);
-	m_ppObjects[0]->SetMesh(pCubeMesh);
 	//인스턴싱을 위한 정점 버퍼와 뷰를 생성한다.
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -454,4 +470,19 @@ void CInstancingILShader::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[0]);
 	UpdateShaderVariables(pd3dCommandList);
 	reinterpret_cast<CRotatingObject*>(m_ppObjects[0])->Render(pd3dCommandList, m_nObjects, m_d3dInstancingBufferView);
+}
+
+void CInstancingILShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[0]);
+	//UpdateShaderVariables(pd3dCommandList);
+	UINT n_visibleObjects = 0;
+	for (int i = 0; i < m_nMaxObjects; ++i) {
+		if (reinterpret_cast<CRotatingObject*>(m_ppObjects[i])->IsVisible(pCamera)) {
+			m_pcbMappedGameObjects[n_visibleObjects].m_xmf4Color = (i % 2) ? XMFLOAT4(0.5f, 0.0f, 0.0f, 0.0f) : XMFLOAT4(0.0f, 0.0f, 0.5f, 0.0f);
+			XMStoreFloat4x4(&m_pcbMappedGameObjects[n_visibleObjects].m_xmf4x4Transform, XMMatrixTranspose(XMLoadFloat4x4(&m_ppObjects[i]->m_xmf4x4World)));
+			++n_visibleObjects;
+		}
+	}
+	reinterpret_cast<CRotatingObject*>(m_ppObjects[0])->Render(pd3dCommandList, n_visibleObjects, m_d3dInstancingBufferView);
 }

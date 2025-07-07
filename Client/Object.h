@@ -1,6 +1,7 @@
 #pragma once
 #include "Mesh.h"
 class CShader;
+class CCamera;
 
 class CObject
 {
@@ -17,7 +18,6 @@ public:
 	XMFLOAT4X4 m_xmf4x4World;
 	CMesh* m_pMesh = NULL;
 	CShader* m_pShader = NULL;
-
 public:
 	void ReleaseUploadBuffers();
 	virtual void SetMesh(CMesh* pMesh);
@@ -66,5 +66,5 @@ public:
 	void SetRotationAxis(XMFLOAT3 xmf3RotationAxis) { m_xmf3RotationAxis = xmf3RotationAxis; }
 	virtual void Animate(float fTimeElapsed);
 	void Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nInstances, D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
-
+	bool IsVisible(CCamera* pCamera);
 };

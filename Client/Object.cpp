@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Shader.h"
+#include "Camera.h"
 #include "Object.h"
 
 CObject::CObject()
@@ -130,6 +131,14 @@ void CRotatingObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nI
 	if (m_pMesh) 
 		reinterpret_cast<CCubeMeshDiffusedIndexed*>(m_pMesh)->Render(pd3dCommandList, nInstances, d3dInstancingBufferView);
 
+}
+
+bool CRotatingObject::IsVisible(CCamera* pCamera)
+{
+	auto boundingBox = m_pMesh->GetBoundingBox();
+	XMMATRIX worldtransform = XMLoadFloat4x4(&m_xmf4x4World);
+	boundingBox.Transform(boundingBox, worldtransform);
+	return pCamera->IsInFrustum(boundingBox);
 }
 
 void CObject::SetPosition(float x, float y, float z)

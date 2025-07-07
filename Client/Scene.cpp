@@ -77,7 +77,9 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 	//씬을 렌더링하는 것은 씬을 구성하는 셰이더(셰이더가 포함하는 객체)들을 렌더링하는 것이다. 
 	for (int i = 0; i < m_nShaders; i++)
 	{
-		m_ppShaders[i]->Render(pd3dCommandList);
+		//m_ppShaders[i]->Render(pd3dCommandList);
+		m_ppShaders[i]->Render(pd3dCommandList,m_pCamera);
+		//reinterpret_cast<CInstancingILShader*>(m_ppShaders[i])->Render(pd3dCommandList, m_pCamera);
 	}
 }
 
@@ -145,4 +147,5 @@ void CScene::SetCamera(const int& ViewPortWidth, const int& ViewPortHeight)
 	m_pCamera->SetScissorRect(0, 0, ViewPortWidth, ViewPortHeight);
 	m_pCamera->GenerateProjectionMatrix(1.0f, 500.0f, float(ViewPortWidth) / float(ViewPortHeight), 90.0f);
 	m_pCamera->GenerateViewMatrix(XMFLOAT3(0.0f, 15.0f, -25.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
+	m_pCamera->GenerateFrustum();
 }

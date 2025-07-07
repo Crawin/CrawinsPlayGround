@@ -194,6 +194,7 @@ CCubeMeshDiffusedIndexed::CCubeMeshDiffusedIndexed(ID3D12Device* pd3dDevice, ID3
 	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
 
+	m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(fx, fy, fz), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 }
 
 CCubeMeshDiffusedIndexed::~CCubeMeshDiffusedIndexed()
