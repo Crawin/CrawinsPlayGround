@@ -411,7 +411,7 @@ void CInstancingILShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12
 	m_pd3dcbGameObjects->Map(0, NULL, (void **)&m_pcbMappedGameObjects);
 
 	m_d3dInstancingBufferView.BufferLocation = m_pd3dcbGameObjects->GetGPUVirtualAddress();
-	m_d3dInstancingBufferView.SizeInBytes = sizeof(VS_VB_INSTANCE) * m_nObjects;
+	m_d3dInstancingBufferView.SizeInBytes = sizeof(VS_VB_INSTANCE) * m_nMaxObjects;
 	m_d3dInstancingBufferView.StrideInBytes = sizeof(VS_VB_INSTANCE);
 }
 
@@ -485,4 +485,126 @@ void CInstancingILShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCa
 		}
 	}
 	reinterpret_cast<CRotatingObject*>(m_ppObjects[0])->Render(pd3dCommandList, n_visibleObjects, m_d3dInstancingBufferView);
+}
+
+CGeometryShader::CGeometryShader()
+{
+}
+
+CGeometryShader::~CGeometryShader()
+{
+}
+
+void CGeometryShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dRootSignature)
+{
+	if (m_nPipelineStates == 0) {
+		m_nPipelineStates = 1;
+		m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+	}
+	ID3DBlob* pd3dVertexShaderBlob = NULL, * pd3dPixelShaderBlob = NULL, * pd3dGeomertyShaderBlob = NULL;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dPipelineStateDesc;
+	::ZeroMemory(&d3dPipelineStateDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	d3dPipelineStateDesc.pRootSignature = pd3dRootSignature;
+	d3dPipelineStateDesc.VS = CreateVertexShader(&pd3dVertexShaderBlob);
+	d3dPipelineStateDesc.GS = CreateGeomertyShader(&pd3dGeomertyShaderBlob);
+	d3dPipelineStateDesc.PS = CreatePixelShader(&pd3dPixelShaderBlob);
+	d3dPipelineStateDesc.RasterizerState = CreateRasterizerState();
+	d3dPipelineStateDesc.BlendState = CreateBlendState();
+	d3dPipelineStateDesc.DepthStencilState = CreateDepthStencilState();
+	d3dPipelineStateDesc.InputLayout = CreateInputLayout();
+	d3dPipelineStateDesc.SampleMask = UINT_MAX;
+	d3dPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	d3dPipelineStateDesc.NumRenderTargets = 1;
+	d3dPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	d3dPipelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	d3dPipelineStateDesc.SampleDesc.Count = 1;
+	d3dPipelineStateDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	HRESULT hr = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[0]);
+	if (pd3dVertexShaderBlob) pd3dVertexShaderBlob->Release();
+	if (pd3dPixelShaderBlob) pd3dPixelShaderBlob->Release();
+	if (pd3dGeomertyShaderBlob) pd3dGeomertyShaderBlob->Release();
+	if (d3dPipelineStateDesc.InputLayout.pInputElementDescs)
+		delete[] d3dPipelineStateDesc.InputLayout.pInputElementDescs;
+}
+
+D3D12_INPUT_LAYOUT_DESC CGeometryShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 2;
+	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "PADDING", 0, DXGI_FORMAT_R32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+	return(d3dInputLayoutDesc);
+}
+
+D3D12_SHADER_BYTECODE CGeometryShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VS_GS", "vs_5_1", ppd3dShaderBlob));
+
+}
+
+D3D12_SHADER_BYTECODE CGeometryShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PS_GSCube", "ps_5_1", ppd3dShaderBlob));
+
+}
+
+D3D12_SHADER_BYTECODE CGeometryShader::CreateGeomertyShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "GS_Cube", "gs_5_1", ppd3dShaderBlob));
+}
+
+void CGeometryShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	m_pd3dcbGameObjects = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, sizeof(VS_VB) * m_nObjects,
+		D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+
+	m_pd3dcbGameObjects->Map(0, NULL, (void**)&m_pcbMappedGameObjectsWorldPos);
+
+	m_d3dBufferView.BufferLocation = m_pd3dcbGameObjects->GetGPUVirtualAddress();
+	m_d3dBufferView.SizeInBytes = sizeof(VS_VB) * m_nObjects;
+	m_d3dBufferView.StrideInBytes = sizeof(VS_VB);
+}
+
+void CGeometryShader::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	for (int j = 0; j < m_nObjects; j++)
+	{
+		m_pcbMappedGameObjectsWorldPos[j].m_xmf3WorldPos = XMFLOAT3(m_ppObjects[j]->m_xmf4x4World._41, m_ppObjects[j]->m_xmf4x4World._42, m_ppObjects[j]->m_xmf4x4World._43);
+		m_pcbMappedGameObjectsWorldPos[j].m_fPadding = 6.0f;
+	}
+}
+
+void CGeometryShader::ReleaseShaderVariables()
+{
+	m_pd3dcbGameObjects->Release();
+}
+
+void CGeometryShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	m_nObjects = 1;
+	m_ppObjects = new CObject * [m_nObjects];
+	
+	CRotatingObject* pRotatingObject = new CRotatingObject;
+	pRotatingObject->SetPosition(0, 0, 0);
+	pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+	pRotatingObject->SetRotationSpeed(10);
+	m_ppObjects[0] = pRotatingObject;
+	
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
+
+void CGeometryShader::Render(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+}
+
+void CGeometryShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[0]);
+	UpdateShaderVariables(pd3dCommandList);
+	pd3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+	pd3dCommandList->IASetVertexBuffers(0, 1, &m_d3dBufferView);
+	pd3dCommandList->DrawInstanced(1, 1, 0, 0);
 }

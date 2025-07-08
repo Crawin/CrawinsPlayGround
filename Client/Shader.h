@@ -93,3 +93,30 @@ protected:
 	D3D12_VERTEX_BUFFER_VIEW m_d3dInstancingBufferView;
 	UINT m_nMaxObjects;
 };
+
+class CGeometryShader : public CShader
+{
+protected:
+	struct VS_VB {
+		XMFLOAT3 m_xmf3WorldPos;
+		float	m_fPadding;
+	};
+	ID3D12Resource* m_pd3dcbGameObjects = NULL;
+	VS_VB* m_pcbMappedGameObjectsWorldPos = NULL;
+	D3D12_VERTEX_BUFFER_VIEW m_d3dBufferView;
+
+public:
+	CGeometryShader();
+	virtual ~CGeometryShader();
+	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dRootSignature);
+	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreateGeomertyShader(ID3DBlob** ppd3dShaderBlob);
+	virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void ReleaseShaderVariables();
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+};

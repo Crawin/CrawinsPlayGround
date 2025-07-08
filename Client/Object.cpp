@@ -120,6 +120,7 @@ void CRotatingObject::Animate(float fTimeElapsed)
 	if (m_fAnimationTime > 2 * 3.141592) {
 		m_fAnimationTime -= (2 * 3.141592);
 	}
+	//m_xmf4x4World._41 = (float)(16 * sin(m_fAnimationTime * 2)) + m_xmf3BaseWorld.x;
 	m_xmf4x4World._42 = (float)(4*sin(m_fAnimationTime *2)) + m_xmf3BaseWorld.y;
 }
 

@@ -67,3 +67,75 @@ float4 PSInstancingIL(VS_INSTANCING_OUTPUT input) : SV_TARGET
     return (input.color);
 }
 
+struct VS_GSCube_IN
+{
+    float3 position : POSITION;
+    float pad : PADDING;
+};
+
+struct GS_OUT
+{
+    float4 position : SV_Position;
+    float4 color : COLOR;
+};
+
+
+VS_GSCube_IN VS_GS(VS_GSCube_IN input)
+{
+    return input;
+}
+
+[maxvertexcount(24)]
+void GS_Cube(point VS_GSCube_IN input[1], inout TriangleStream<GS_OUT> triStream)
+{
+    float3 center = input[0].position;
+    float pad = input[0].pad;
+    float3 vertices[8] =
+    {
+        center + float3(-pad, -pad, -pad),  // 0 전면 좌하단
+        center + float3(-pad, pad, -pad),   // 1 전면 좌상단
+        center + float3(pad, pad, -pad),    // 2 전면 우상단
+        center + float3(pad, -pad, -pad),   // 3 전면 우하단
+        center + float3(-pad, -pad, pad),   // 4 후면 좌하단
+        center + float3(-pad, pad, pad),    // 5 후면 좌상단
+        center + float3(pad, pad, pad),     // 6 후면 우상단
+        center + float3(pad, -pad, pad),    // 7 후면 우하단
+    };
+
+    int indices[24] =
+    {
+        1,2,0,3,
+        2,6,3,7,
+        6,5,7,4,
+        5,1,4,0,
+        5,6,1,2,
+        0,3,4,7,
+    };
+
+    for (int i = 0; i < 6; ++i)
+    {
+        GS_OUT out0, out1, out2, out3;
+        matrix ViewProj = mul(gmtxView, gmtxProjection);
+        out0.position = mul(float4(vertices[indices[i * 4 + 0]], 1.0f), ViewProj);
+        out1.position = mul(float4(vertices[indices[i * 4 + 1]], 1.0f), ViewProj);
+        out2.position = mul(float4(vertices[indices[i * 4 + 2]], 1.0f), ViewProj);
+        out3.position = mul(float4(vertices[indices[i * 4 + 3]], 1.0f), ViewProj);
+
+        out0.color = float4(1, 1, 1, 1);
+        out1.color = float4(1, 1, 1, 1);
+        out2.color = float4(0, 0, 0, 1);
+        out3.color = float4(0, 0, 0, 1);
+
+        triStream.Append(out0);
+        triStream.Append(out1);
+        triStream.Append(out2);
+        triStream.Append(out3);
+        triStream.RestartStrip();
+    }
+
+}
+
+float4 PS_GSCube(GS_OUT input):SV_Target
+{
+    return input.color;
+}
