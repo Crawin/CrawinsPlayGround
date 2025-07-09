@@ -529,10 +529,11 @@ void CGeometryShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature
 
 D3D12_INPUT_LAYOUT_DESC CGeometryShader::CreateInputLayout()
 {
-	UINT nInputElementDescs = 2;
+	UINT nInputElementDescs = 3;
 	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
 	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-	pd3dInputElementDescs[1] = { "PADDING", 0, DXGI_FORMAT_R32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "ANGLE", 0, DXGI_FORMAT_R32_FLOAT, 0, sizeof(float)*3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0};
+	pd3dInputElementDescs[2] = { "PADDING", 0, DXGI_FORMAT_R32_FLOAT, 0, sizeof(float)*4, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0};
 	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
 	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
 	d3dInputLayoutDesc.NumElements = nInputElementDescs;
@@ -542,7 +543,6 @@ D3D12_INPUT_LAYOUT_DESC CGeometryShader::CreateInputLayout()
 D3D12_SHADER_BYTECODE CGeometryShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VS_GS", "vs_5_1", ppd3dShaderBlob));
-
 }
 
 D3D12_SHADER_BYTECODE CGeometryShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
@@ -553,7 +553,8 @@ D3D12_SHADER_BYTECODE CGeometryShader::CreatePixelShader(ID3DBlob** ppd3dShaderB
 
 D3D12_SHADER_BYTECODE CGeometryShader::CreateGeomertyShader(ID3DBlob** ppd3dShaderBlob)
 {
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "GS_Cube", "gs_5_1", ppd3dShaderBlob));
+	//return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "GS_Cube", "gs_5_1", ppd3dShaderBlob));
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "GS_Cube_Animation", "gs_5_1", ppd3dShaderBlob));
 }
 
 void CGeometryShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
@@ -573,7 +574,8 @@ void CGeometryShader::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dComma
 	for (int j = 0; j < m_nObjects; j++)
 	{
 		m_pcbMappedGameObjectsWorldPos[j].m_xmf3WorldPos = XMFLOAT3(m_ppObjects[j]->m_xmf4x4World._41, m_ppObjects[j]->m_xmf4x4World._42, m_ppObjects[j]->m_xmf4x4World._43);
-		m_pcbMappedGameObjectsWorldPos[j].m_fPadding = 6.0f;
+		m_pcbMappedGameObjectsWorldPos[j].m_fAngle = XMConvertToRadians(m_ppObjects[j]->m_xmf3RotAngle.z);
+		m_pcbMappedGameObjectsWorldPos[j].m_fPadding = 1.0f;
 	}
 }
 
@@ -584,14 +586,31 @@ void CGeometryShader::ReleaseShaderVariables()
 
 void CGeometryShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	m_nObjects = 1;
+	int xObjects = 10, yObjects = 10, zObjects = 10, i = 0;
+	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
 	m_ppObjects = new CObject * [m_nObjects];
 	
-	CRotatingObject* pRotatingObject = new CRotatingObject;
-	pRotatingObject->SetPosition(0, 0, 0);
-	pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
-	pRotatingObject->SetRotationSpeed(10);
-	m_ppObjects[0] = pRotatingObject;
+	float fxPitch = 1.f;
+	float fyPitch = 1.f;
+	float fzPitch = 1.f;
+	CCubeMeshDiffusedIndexed* pCubeMesh = new CCubeMeshDiffusedIndexed(pd3dDevice, pd3dCommandList, 1.f, 1.f, 1.f);
+
+	CRotatingObject* pRotatingObject = NULL;
+	for (int x = -xObjects; x <= xObjects; x++)
+	{
+		for (int y = -yObjects; y <= yObjects; y++)
+		{
+			for (int z = -zObjects; z <= zObjects; z++)
+			{
+				pRotatingObject = new CRotatingObject();
+				pRotatingObject->SetPosition(fxPitch * x, fyPitch * y, fzPitch * z);
+				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+				pRotatingObject->SetRotationSpeed(10.0f * (i % 10));
+				m_ppObjects[i] = pRotatingObject;
+				m_ppObjects[i++]->SetMesh(pCubeMesh);
+			}
+		}
+	}
 	
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -606,5 +625,5 @@ void CGeometryShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 	UpdateShaderVariables(pd3dCommandList);
 	pd3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 	pd3dCommandList->IASetVertexBuffers(0, 1, &m_d3dBufferView);
-	pd3dCommandList->DrawInstanced(1, 1, 0, 0);
+	pd3dCommandList->DrawInstanced(m_nObjects, 1, 0, 0);
 }

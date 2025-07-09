@@ -99,6 +99,7 @@ class CGeometryShader : public CShader
 protected:
 	struct VS_VB {
 		XMFLOAT3 m_xmf3WorldPos;
+		float m_fAngle;
 		float	m_fPadding;
 	};
 	ID3D12Resource* m_pd3dcbGameObjects = NULL;

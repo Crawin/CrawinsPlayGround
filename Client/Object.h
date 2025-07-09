@@ -15,6 +15,7 @@ public:
 	void Release() { if (--m_nReferences <= 0)delete this; }
 public:
 	XMFLOAT3 m_xmf3BaseWorld;
+	XMFLOAT3 m_xmf3RotAngle;
 	XMFLOAT4X4 m_xmf4x4World;
 	CMesh* m_pMesh = NULL;
 	CShader* m_pShader = NULL;

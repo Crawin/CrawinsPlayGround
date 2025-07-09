@@ -7,6 +7,7 @@ CObject::CObject()
 {
 	XMStoreFloat4x4(&m_xmf4x4World, XMMatrixIdentity());
 	m_xmf3BaseWorld = { 0,0,0 };
+	m_xmf3RotAngle = { 0,0,0 };
 }
 
 CObject::~CObject()
@@ -115,7 +116,11 @@ CRotatingObject::~CRotatingObject()
 
 void CRotatingObject::Animate(float fTimeElapsed)
 {
-	Rotate(&m_xmf3RotationAxis, m_fRotationSpeed * fTimeElapsed);
+	//Rotate(&m_xmf3RotationAxis, m_fRotationSpeed * fTimeElapsed);
+	m_xmf3RotAngle.z += m_fRotationSpeed * fTimeElapsed;
+	if (m_xmf3RotAngle.z > 360) {
+		m_xmf3RotAngle.z -= 360;
+	}
 	m_fAnimationTime += fTimeElapsed;
 	if (m_fAnimationTime > 2 * 3.141592) {
 		m_fAnimationTime -= (2 * 3.141592);
