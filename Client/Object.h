@@ -8,21 +8,14 @@ class CObject
 public:
 	CObject();
 	virtual ~CObject();
-private:
-	int m_nReferences = 0;
-public:
-	void AddRef() { m_nReferences++; }
-	void Release() { if (--m_nReferences <= 0)delete this; }
 public:
 	XMFLOAT3 m_xmf3BaseWorld;
 	XMFLOAT3 m_xmf3RotAngle;
 	XMFLOAT4X4 m_xmf4x4World;
 	CMesh* m_pMesh = NULL;
-	CShader* m_pShader = NULL;
 public:
 	void ReleaseUploadBuffers();
 	virtual void SetMesh(CMesh* pMesh);
-	virtual void SetShader(CShader* pShader);
 	virtual void Animate(float fTimeElapsed);
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
@@ -68,4 +61,28 @@ public:
 	virtual void Animate(float fTimeElapsed);
 	void Render(ID3D12GraphicsCommandList* pd3dCommandList, UINT nInstances, D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
 	bool IsVisible(CCamera* pCamera);
+};
+
+class CSkybox : public CObject
+{
+public:
+	CSkybox();
+	virtual ~CSkybox();
+private:
+};
+
+class CTexture {
+private:
+	int								m_nTextures = 0;
+	ID3D12Resource** m_ppd3dTextures = NULL;
+	ID3D12Resource** m_ppd3dTextureUploadBuffers;
+	ID3D12DescriptorHeap* m_pDescriptorHeap;
+	D3D12_CPU_DESCRIPTOR_HANDLE m_d3dCPUDescriptorStartHandle;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_d3dGPUDescriptorStartHandle;
+public:
+	CTexture();
+	virtual ~CTexture();
+
+	void LoadTextureFromDDSFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const wchar_t* pszFileName, UINT nResourceType, UINT nIndex);
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 };

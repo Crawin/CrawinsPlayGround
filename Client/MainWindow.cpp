@@ -360,7 +360,7 @@ void CMainWindow::FrameAdvance()
 
 	AnimateObjects();
 	if (m_pScene) m_pScene->Render(m_pd3dCommandList);
-
+	float elapsedTime = m_GameTimer.GetTimeElapsed();
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;

@@ -121,3 +121,33 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 };
+
+struct GS_CB {
+	XMFLOAT4X4 worldTransform;
+	XMFLOAT3 padding;
+};
+
+class CSkyboxShader : public CShader
+{
+private:
+	ID3D12Resource* m_pd3dVertexBuffer = NULL;
+	ID3D12Resource* m_pd3dVertexUploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW m_d3dVertexBufferView;
+
+	CTexture* m_pTexture;
+public:
+	CSkyboxShader();
+	virtual ~CSkyboxShader();
+	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dRootSignature);
+	virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
+	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreateGeomertyShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_DEPTH_STENCIL_DESC CreateDepthStencilState();
+	virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void ReleaseShaderVariables();
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+};

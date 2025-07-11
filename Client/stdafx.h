@@ -50,6 +50,7 @@ using Microsoft::WRL::ComPtr;
 
 extern ID3D12Resource* CreateBufferResource(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pData, UINT nBytes, D3D12_HEAP_TYPE
 	d3dHeapType = D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, ID3D12Resource** ppd3dUploadBuffer = NULL);
+extern ID3D12Resource* CreateTextureResourceFromDDSFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const wchar_t* pszFileName, ID3D12Resource** ppd3dUploadBuffer, D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 //3차원 벡터의 연산 
 namespace Vector3
@@ -228,3 +229,50 @@ namespace Matrix4x4
 }
 
 #define RANDOM_COLOR XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
+
+#include <shlobj.h>
+#include <strsafe.h>
+
+static std::wstring GetLatestWinPixGpuCapturerPath()
+{
+    LPWSTR programFilesPath = nullptr;
+    SHGetKnownFolderPath(FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, NULL, &programFilesPath);
+
+    std::wstring pixSearchPath = programFilesPath + std::wstring(L"\\Microsoft PIX\\*");
+
+    WIN32_FIND_DATA findData;
+    bool foundPixInstallation = false;
+    wchar_t newestVersionFound[MAX_PATH];
+
+    HANDLE hFind = FindFirstFile(pixSearchPath.c_str(), &findData);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do 
+        {
+            if (((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) &&
+                 (findData.cFileName[0] != '.'))
+            {
+                if (!foundPixInstallation || wcscmp(newestVersionFound, findData.cFileName) <= 0)
+                {
+                    foundPixInstallation = true;
+                    StringCchCopy(newestVersionFound, _countof(newestVersionFound), findData.cFileName);
+                }
+            }
+        } 
+        while (FindNextFile(hFind, &findData) != 0);
+    }
+
+    FindClose(hFind);
+
+    if (!foundPixInstallation)
+    {
+        // TODO: Error, no PIX installation found
+    }
+
+    wchar_t output[MAX_PATH];
+    StringCchCopy(output, pixSearchPath.length(), pixSearchPath.data());
+    StringCchCat(output, MAX_PATH, &newestVersionFound[0]);
+    StringCchCat(output, MAX_PATH, L"\\WinPixGpuCapturer.dll");
+
+    return &output[0];
+}

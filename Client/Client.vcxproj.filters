@@ -99,6 +99,9 @@
     <ClInclude Include="Camera.h">
       <Filter>헤더 파일\MainWindow\Scene\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="DDSTextureLoader12.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoostClient.cpp">
@@ -108,9 +111,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="MainWindow.cpp">
-      <Filter>소스 파일\MainWindow</Filter>
-    </ClCompile>
-    <ClCompile Include="Client.cpp">
       <Filter>소스 파일\MainWindow</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
@@ -136,6 +136,12 @@
     </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>소스 파일\MainWindow\Scene\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Client.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DDSTextureLoader12.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

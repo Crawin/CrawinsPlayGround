@@ -81,6 +81,7 @@ struct GS_OUT
 {
     float4 position : SV_Position;
     float4 color : COLOR;
+    float3 dir : TEXCOORD;
 };
 
 
@@ -190,12 +191,12 @@ void GS_Cube_Animation(point VS_GSCube_IN input[1], inout TriangleStream<GS_OUT>
         out1.position = mul(float4(vertices[indices[i * 4 + 1]], 1.0f), ViewProj);
         out2.position = mul(float4(vertices[indices[i * 4 + 2]], 1.0f), ViewProj);
         out3.position = mul(float4(vertices[indices[i * 4 + 3]], 1.0f), ViewProj);
-
+        
         out0.color = float4(1, 1, 1, 1);
         out1.color = float4(1, 1, 1, 1);
         out2.color = float4(0, 0, 0, 1);
         out3.color = float4(0, 0, 0, 1);
-
+        
         triStream.Append(out0);
         triStream.Append(out1);
         triStream.Append(out2);
@@ -208,4 +209,101 @@ void GS_Cube_Animation(point VS_GSCube_IN input[1], inout TriangleStream<GS_OUT>
 float4 PS_GSCube(GS_OUT input):SV_Target
 {
     return input.color;
+}
+
+struct VS_SKYBOX_INPUT
+{
+    matrix mtxWorldTransform : WORLDMATRIX;
+    float3 fPadding : PADDING;
+    
+};
+
+VS_SKYBOX_INPUT VS_SKYBOX(VS_SKYBOX_INPUT input)
+{
+    return input;
+}
+
+[maxvertexcount(24)]
+void GS_SKYBOX(point VS_SKYBOX_INPUT input[1], inout TriangleStream<GS_OUT> triStream)
+{
+    float3 padding = input[0].fPadding;
+    matrix WorldTransform = input[0].mtxWorldTransform;
+    float3 vertices[8] =
+    {
+        float3(-padding.x, -padding.y, -padding.z), // 0 전면 좌하단
+        float3(-padding.x, padding.y, -padding.z), // 1 전면 좌상단
+        float3(padding.x, padding.y, -padding.z), // 2 전면 우상단
+        float3(padding.x, -padding.y, -padding.z), // 3 전면 우하단
+        float3(-padding.x, -padding.y, padding.z), // 4 후면 좌하단
+        float3(-padding.x, padding.y, padding.z), // 5 후면 좌상단
+        float3(padding.x, padding.y, padding.z), // 6 후면 우상단
+        float3(padding.x, -padding.y, padding.z), // 7 후면 우하단
+    };
+
+    int indices[24] =
+    {
+        1, 2, 0, 3,
+        2, 6, 3, 7,
+        6, 5, 7, 4,
+        5, 1, 4, 0,
+        5, 6, 1, 2,
+        0, 3, 4, 7,
+    };
+
+    for (int i = 0; i < 6; ++i)
+    {
+        GS_OUT out0, out1, out2, out3;
+        matrix ViewProj = mul(mul(WorldTransform, gmtxView), gmtxProjection);
+        out0.position = mul(float4(vertices[indices[i * 4 + 0]], 1.0f), ViewProj);
+        out1.position = mul(float4(vertices[indices[i * 4 + 1]], 1.0f), ViewProj);
+        out2.position = mul(float4(vertices[indices[i * 4 + 2]], 1.0f), ViewProj);
+        out3.position = mul(float4(vertices[indices[i * 4 + 3]], 1.0f), ViewProj);
+
+        //float depth = out0.position.z;
+        //float depth2 = out0.position.w;
+        out0.position.z = out0.position.w;
+        out1.position.z = out1.position.w;
+        out2.position.z = out2.position.w;
+        out3.position.z = out3.position.w;
+        
+        out0.color = float4(1, 1, 1, 1);
+        out1.color = float4(1, 1, 1, 1);
+        out2.color = float4(0, 0, 0, 1);
+        out3.color = float4(0, 0, 0, 1);
+
+        out0.dir = mul(float4(vertices[indices[i * 4 + 0]], 1.0f), input[0].mtxWorldTransform).xyz;
+        out1.dir = mul(float4(vertices[indices[i * 4 + 1]], 1.0f), input[0].mtxWorldTransform).xyz;
+        out2.dir = mul(float4(vertices[indices[i * 4 + 2]], 1.0f), input[0].mtxWorldTransform).xyz;
+        out3.dir = mul(float4(vertices[indices[i * 4 + 3]], 1.0f), input[0].mtxWorldTransform).xyz;
+        
+        triStream.Append(out0);
+        triStream.Append(out1);
+        triStream.Append(out2);
+        triStream.Append(out3);
+        triStream.RestartStrip();
+    }
+
+}
+
+Texture2D gSkybox : register(t0);
+SamplerState gSampler : register(s0);
+
+float2 DirectionToEquirectangularUV(float3 dir)
+{
+    // 방향 벡터를 구면좌표(θ, φ)로 변환
+    float longitude = atan2(dir.z, dir.x); // -PI ~ PI
+    float latitude = asin(dir.y); // -PI/2 ~ PI/2
+
+    // 0~1 범위 UV 좌표로 매핑
+    float u = (longitude / (2.0 * 3.14159265)) + 0.5;
+    float v = 0.5 - (latitude / 3.14159265);
+
+    return float2(u, v);
+}
+
+float4 PS_SKYBOX(GS_OUT input):SV_Target
+{
+    float2 uv = DirectionToEquirectangularUV(normalize(input.dir));
+    return gSkybox.Sample(gSampler, uv);
+    //return input.color;
 }

@@ -14,7 +14,6 @@ public:
 	void Tick(float fLockFPS = 0.0f);
 	unsigned long GetFrameRate(LPTSTR lpszString = NULL, int nCharacters = 0);
 	float GetTimeElapsed();
-
 private:
 	bool m_bHardwareHasPerformanceCounter;
 	float m_fTimeScale;

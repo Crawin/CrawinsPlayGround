@@ -40,7 +40,7 @@ public:
 private:
 	int m_nReferences = 0;
 public:
-	void AddRef() { m_nReferences++; }
+	void AddRef() { ++m_nReferences; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 	virtual void ReleaseUploadBuffers();
 	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
@@ -56,13 +56,6 @@ protected:
 	BoundingOrientedBox m_xmBoundingBox;
 public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
-};
-
-class CTriangleMesh : public CMesh
-{
-public:
-	CTriangleMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-	virtual ~CTriangleMesh() { }
 };
 
 class CCubeMeshDiffused : public CMesh

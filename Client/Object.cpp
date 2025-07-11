@@ -13,11 +13,6 @@ CObject::CObject()
 CObject::~CObject()
 {
 	if (m_pMesh) m_pMesh->Release();
-	if (m_pShader)
-	{
-		m_pShader->ReleaseShaderVariables();
-		m_pShader->Release();
-	}
 }
 
 void CObject::ReleaseUploadBuffers()
@@ -30,13 +25,6 @@ void CObject::SetMesh(CMesh* pMesh)
 	if (m_pMesh) m_pMesh->Release();
 	m_pMesh = pMesh;
 	if (m_pMesh) m_pMesh->AddRef();
-}
-
-void CObject::SetShader(CShader* pShader)
-{
-	if (m_pShader) m_pShader->Release();
-	m_pShader = pShader;
-	if (m_pShader) m_pShader->AddRef();
 }
 
 void CObject::Animate(float fTimeElapsed)
@@ -188,4 +176,63 @@ void CObject::Rotate(float fPitch, float fYaw, float fRoll)
 {
 	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
 	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate, m_xmf4x4World);
+}
+
+CSkybox::CSkybox()
+{
+}
+
+CSkybox::~CSkybox()
+{
+}
+
+CTexture::CTexture()
+{
+	m_nTextures = 1;
+	m_ppd3dTextureUploadBuffers = new ID3D12Resource * [m_nTextures];
+	m_ppd3dTextures = new ID3D12Resource * [m_nTextures];
+	m_ppd3dTextures[0] = m_ppd3dTextureUploadBuffers[0] = NULL;
+		//CreateTextureResourceFromDDSFile(pd3dDevice, pd3dCommandList, L"MilkyWayPanorama8K.dds", &m_ppd3dTextureUploadBuffers[0], D3D12_RESOURCE_STATE_GENERIC_READ);
+
+}
+
+CTexture::~CTexture()
+{
+	for (int i = 0; i < m_nTextures; ++i) {
+		m_ppd3dTextures[i]->Release();
+		m_ppd3dTextureUploadBuffers[i]->Release();
+		m_pDescriptorHeap->Release();
+	}
+}
+
+void CTexture::LoadTextureFromDDSFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList,const wchar_t* pszFileName, UINT nResourceType, UINT nIndex)
+{
+	m_ppd3dTextures[nIndex] = CreateTextureResourceFromDDSFile(pd3dDevice, pd3dCommandList, pszFileName, &m_ppd3dTextureUploadBuffers[nIndex], D3D12_RESOURCE_STATE_GENERIC_READ);
+
+	D3D12_DESCRIPTOR_HEAP_DESC d3dDescriptorHeapDesc;
+	d3dDescriptorHeapDesc.NumDescriptors = 1; //CBVs + SRVs 
+	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	d3dDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	d3dDescriptorHeapDesc.NodeMask = 0;
+	pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pDescriptorHeap);
+	m_d3dCPUDescriptorStartHandle = m_pDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	m_d3dGPUDescriptorStartHandle = m_pDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+	D3D12_RESOURCE_DESC textureDesc = m_ppd3dTextures[nIndex]->GetDesc();
+	D3D12_SHADER_RESOURCE_VIEW_DESC Desc;
+	Desc.Format = textureDesc.Format;
+	Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	Desc.TextureCube.MipLevels = textureDesc.MipLevels;
+	Desc.TextureCube.MostDetailedMip = 0;
+	Desc.TextureCube.ResourceMinLODClamp = 0.0f;
+	Desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	pd3dDevice->CreateShaderResourceView(m_ppd3dTextures[nIndex], &Desc, m_d3dCPUDescriptorStartHandle);
+}
+
+void CTexture::Render(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	ID3D12DescriptorHeap* ppHeaps[] = { m_pDescriptorHeap };
+	pd3dCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	pd3dCommandList->SetGraphicsRootDescriptorTable(3, m_d3dGPUDescriptorStartHandle);
 }
